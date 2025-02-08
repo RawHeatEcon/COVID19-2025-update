@@ -1,0 +1,31 @@
+---
+title: "COVID-19 Data ETL"
+author: "Rohit Kumar"
+date: "2025-02-08"
+output: pdf_document
+---
+
+
+```{r setup, warning = FALSE, message = FALSE, include = FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+require("knitr")
+
+#opts_knit$set(root.dir = "")
+
+# Setting working directory for the project
+
+
+library(broom)
+library(tidyverse)
+library(car)
+library(olsrr)
+library(MPV)
+library(cvTools)
+library(mctest)
+library(dplyr)
+library(lubridate)
+# Loading all necessary libraries
+
+
+```
