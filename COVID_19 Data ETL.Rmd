@@ -11,21 +11,55 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 require("knitr")
 
-#opts_knit$set(root.dir = "")
+opts_knit$set(root.dir = "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project")
 
 # Setting working directory for the project
 
+library(tidyverse)  # Includes dplyr, ggplot2, tidyr, readr, etc.
+library(lubridate)  # For handling date conversions
+library(broom)      # For tidying model outputs
+library(olsrr)      # For regression diagnostics
+library(car)        # Regression diagnostics
+library(mctest)     # Multicollinearity test
+library(MPV)        # Regression modeling
+library(cvTools)    # Cross-validation
 
-library(broom)
-library(tidyverse)
-library(car)
-library(olsrr)
-library(MPV)
-library(cvTools)
-library(mctest)
-library(dplyr)
-library(lubridate)
+
 # Loading all necessary libraries
 
 
 ```
+
+
+
+
+# Data Import
+
+
+## Extraction
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
