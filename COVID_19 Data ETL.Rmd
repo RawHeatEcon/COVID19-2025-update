@@ -83,31 +83,36 @@ gitcreds_get()
 ```
 
 
+```{r, warning = FALSE, message = FALSE}
+
+Sys.setenv(GITHUB_PAT = gitcreds_get()$password)
+```
 
 
 
 
 
+## Initial Data Import
 
+```{r, warning = FALSE, message = FALSE}
+#install.packages("httr2",type="binary")
+library(httr2)
+# GitHub repository details
+repo <- "CSSEGISandData/COVID-19"
+path <- "csse_covid_19_data/csse_covid_19_daily_reports_us"
 
+# Fetching all files in the directory using GitHub API
+file_list <- gh("GET /repos/{owner}/{repo}/contents/{path}", 
+                owner = "CSSEGISandData", repo = "COVID-19", path = path)
 
+# Extracting the file names and filtering for CSV files
+csv_files <- sapply(file_list, function(x) x$name)
+csv_files <- csv_files[grepl("\\.csv$", csv_files)]
 
+# List the CSV files
+head(csv_files)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
 
 
 
@@ -115,7 +120,36 @@ gitcreds_get()
 
 
 ```{r, warning = FALSE, message = FALSE}
+# Base URL for files
+base_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports_us/"
 
+# Initialize an empty list to store the data
+covid_data_list <- list()
+
+# Loop through the files and read them in batches
+for (file in csv_files) {
+  # Construct the raw file URL
+  file_url <- paste0(base_url, file)
+  
+  # Download the file and read it into R
+  response <- GET(file_url)
+  
+  if (status_code(response) == 200) {
+    # Read CSV content into R
+    covid_data <- read_csv(content(response, "text"))
+    
+    # Store the data (you can also transform it if needed here)
+    covid_data_list[[file]] <- covid_data
+  } else {
+    cat("Skipping missing file:", file, "\n")
+  }
+}
+
+# Combine the data if needed (e.g., bind them into one large data frame)
+combined_data <- do.call(rbind, covid_data_list)
+
+# Check the combined data
+head(combined_data)
 
 ```
 
