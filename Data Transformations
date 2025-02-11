@@ -1,0 +1,9 @@
+After examining a subset of the data, the following operations need to be exucuted in order to standardize the data.
+
+
+
+1. Delete rows with Province_State ; American Samoa, Diamond Princess, Grand Princess, Guam, Northern Mariana Islands, Puerto Rico, Virgin Islands,District of Columbia, Recovered
+2. Delete FIPS column, Incident_Rate, Total_Test_Results, People_Hospitalized, Case_Fatality_Ratio, UID, ISO3, Testing_Rate, Hospitalization_Rate, People_Tested, Mortality_Rate, Date
+3. Last_Update column is in mm/dd/yyy hh:mm:ss AM format, Need to subtract 1 day since the data got updated early in the morning from the day before
+
+
