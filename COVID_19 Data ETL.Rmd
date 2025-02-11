@@ -27,6 +27,11 @@ library(cvTools)    # Cross-validation
 
 # Loading all necessary libraries
 
+#install.packages("gh")
+library(gh)  #using Github API to access datasets rather than storing them on local machine
+
+
+
 
 ```
 
@@ -36,7 +41,46 @@ library(cvTools)    # Cross-validation
 # Data Import
 
 
-## Extraction
+## Setting up GitHub Authentication
+
+
+```{r, warning = FALSE, message = FALSE}
+
+#install.packages("httr")
+#install.packages("gitcreds")  # For managing GitHub credentials
+#install.packages("usethis")   # For GitHub authentication setup
+library(httr)
+library(gitcreds)
+library(usethis)
+
+```
+
+
+
+```{r, warning = FALSE, message = FALSE}
+gitcreds_set()
+
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+gitcreds_get()
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+#Adding Token
+#usethis::edit_r_environ()  # Adding token manually to .Renviron
+#readRenviron("~/.Renviron") # Reloading the environment
+#Sys.getenv("GITHUB_PAT") # Making sure it is set
+
+
+#Testing Connection
+#usethis::gh_token_help()
+#response <- GET("https://api.github.com/user", authenticate("RawHeatEcon", Sys.getenv("GITHUB_PAT")))
+#content(response)
+
+```
 
 
 
@@ -51,6 +95,49 @@ library(cvTools)    # Cross-validation
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, warning = FALSE, message = FALSE}
+
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+
+```
 
 
 
