@@ -157,13 +157,69 @@ for (file in csv_files) {
 ### Confirming Data Import 
 
 ```{r, warning = FALSE, message = FALSE}
-length(covid_data_list)
+summary(covid_data_list)
 
 ```
 
 # Standardizing Data and Combining All Datasets
 
 ```{r, warning = FALSE, message = FALSE}
+# --- Defining the banned strings and pattern for row removal ---
+ban_list <- c("American Samoa", "Diamond Princess", "Grand Princess", "Guam", 
+              "Northern Mariana Islands", "Puerto Rico", "Virgin Islands",
+              "District of Columbia", "Recovered")
+# Creating a regex pattern (the matching will be case-insensitive)
+ban_pattern <- paste(ban_list, collapse = "|")
+
+# --- Defining the column names to remove (case-insensitive) ---
+cols_to_remove <- c("FIPS", "Total_Test_Results", "People_Hospitalized",
+                    "Case_Fatality_Ratio", "UID", "ISO3", "Testing_Rate", "Hospitalization_Rate",
+                    "People_Tested", "Mortality_Rate", "Date","Incident_Rate")
+
+# --- Process each data frame in covid_data_list ---
+covid_data_list_clean <- lapply(covid_data_list, function(df) {
+  
+  # Step 1: Remove rows based on banned values in columns whose name contains "State" or "Province"
+  # Identify columns to check (ignoring case)
+  cols_to_check <- names(df)[str_detect(names(df), regex("state|province", ignore_case = TRUE))]
+  
+  if (length(cols_to_check) > 0) {
+    # Filter out any row where at least one of the checked columns contains a banned string.
+    df <- df %>% 
+      filter(!if_any(all_of(cols_to_check), ~ str_detect(.x, regex(ban_pattern, ignore_case = TRUE))))
+  }
+  
+  # Step 2: Remove unwanted columns (ignoring case)
+  # We compare the lower-case version of each column name.
+  df <- df %>% 
+    select(-which(tolower(names(.)) %in% tolower(cols_to_remove)))
+  
+  # Step 3: Replace missing values in "Active" with the corresponding value from "Confirmed"
+  # Locate the columns regardless of case.
+  active_col <- names(df)[tolower(names(df)) == "active"]
+  confirmed_col <- names(df)[tolower(names(df)) == "confirmed"]
+  
+  if (length(active_col) == 1 && length(confirmed_col) == 1) {
+    # Replace if NA or blank ("")
+    df[[active_col]] <- ifelse(is.na(df[[active_col]]) | df[[active_col]] == "",
+                               df[[confirmed_col]],
+                               df[[active_col]])
+  }
+  
+  # Step 4: Replace missing values in "Recovered" with 0
+  recovered_col <- names(df)[tolower(names(df)) == "recovered"]
+  
+  if (length(recovered_col) == 1) {
+    df[[recovered_col]] <- ifelse(is.na(df[[recovered_col]]) | df[[recovered_col]] == "",
+                                  0,
+                                  df[[recovered_col]])
+  }
+  
+  return(df)
+})
+
+
+
 
 #covid_data_list
 
@@ -172,30 +228,65 @@ length(covid_data_list)
 
 
 ```{r, warning = FALSE, message = FALSE}
+head(covid_data_list_clean[[1]],50)
+#head(dataset_list[[1]])
+```
+
+#Making sure the data is standardized before combining
+
+```{r, warning = FALSE, message = FALSE}
+# Check if all CSVs have the same column names:
+# Get the column names from the first CSV
+first_names <- names(covid_data_list_clean[[1]])
+
+# Use purrr::map_lgl to compare each CSV's column names with the first CSV
+all_same_columns <- purrr::map_lgl(covid_data_list_clean, ~ identical(names(.x), first_names)) %>% all()
+
+if (all_same_columns) {
+  print("All CSV files have the same column names.")
+} else {
+  print("Not all CSV files have the same column names.")
+}
+
+# Check if each CSV has exactly 50 rows:
+all_have_50_rows <- purrr::map_lgl(covid_data_list_clean, ~ nrow(.x) == 50) %>% all()
+
+if (all_have_50_rows) {
+  print("All CSV files have exactly 50 rows.")
+} else {
+  print("Some CSV files do not have exactly 50 rows.")
+}
+
+
 
 
 ```
+
+
+
 
 
 
 ```{r, warning = FALSE, message = FALSE}
+data <- bind_rows(covid_data_list_clean)
 
 
 ```
 
 
+```{r, warning = FALSE, message = FALSE}
+
+```
 
 
+```{r, warning = FALSE, message = FALSE}
+
+```
 
 
+```{r, warning = FALSE, message = FALSE}
 
-
-
-
-
-
-
-
+```
 
 
 
