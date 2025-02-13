@@ -123,55 +123,78 @@ head(csv_files)
 # Base URL for files
 base_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports_us/"
 
-# Initialize an empty list to store the data
+# Initializing an empty list to store the data
 covid_data_list <- list()
 
-# Loop through the files and read them in batches
+# Looping through the files and reading them in batches
 for (file in csv_files) {
-  # Construct the raw file URL
+  # Constructing the raw file URL
   file_url <- paste0(base_url, file)
   
-  # Download the file and read it into R
-  response <- GET(file_url)
+  # Downloading the file and reading it into R
+  response <- httr::GET(file_url)
   
-  if (status_code(response) == 200) {
-    # Read CSV content into R
-    covid_data <- read_csv(content(response, "text"))
+  if (httr::status_code(response) == 200) {
+    # Reading CSV content into R
+    covid_data <- read_csv(httr::content(response, "text"))
     
-    # Store the data (you can also transform it if needed here)
+    # Storing the data (will transform it if needed here)
     covid_data_list[[file]] <- covid_data
   } else {
     cat("Skipping missing file:", file, "\n")
   }
 }
+#Problem here since, the original GitHub repository directory has been truncated to 1,000 files, ommitting 63 files
 
 # Combine the data if needed (e.g., bind them into one large data frame)
-combined_data <- do.call(rbind, covid_data_list)
+#combined_data <- do.call(rbind, covid_data_list)
 
 # Check the combined data
-head(combined_data)
+#head(combined_data)
 
 ```
+
+### Confirming Data Import 
+
+```{r, warning = FALSE, message = FALSE}
+length(covid_data_list)
+
+```
+
+# Standardizing Data and Combining All Datasets
+
+```{r, warning = FALSE, message = FALSE}
+
+#covid_data_list
+
+```
+
+
 
 ```{r, warning = FALSE, message = FALSE}
 
 
 ```
 
+
+
 ```{r, warning = FALSE, message = FALSE}
 
 
 ```
 
-```{r, warning = FALSE, message = FALSE}
 
 
-```
-
-```{r, warning = FALSE, message = FALSE}
 
 
-```
+
+
+
+
+
+
+
+
 
 
 
