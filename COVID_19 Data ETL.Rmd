@@ -301,10 +301,17 @@ data <- bind_rows(covid_data_list_clean)
 Precipitation & Temperature Data
 1. https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/statewide/time-series
 
-Population Data
+Population & Birth Rate Data
 2. https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html
 
+Land Area Data
+3. https://github.com/jakevdp/data-USstates/blob/master/state-areas.csv
 
+Relative Humidity and Average Dewpoint Data
+4. https://www.ncei.noaa.gov/cdo-web/
+
+Uninsured Rates Data
+5. https://www.shadac.org/news/2023-acs-tables-state-and-county-uninsured-rates-comparison-year-2022
 
 
 
