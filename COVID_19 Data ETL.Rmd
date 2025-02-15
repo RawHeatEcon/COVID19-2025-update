@@ -294,6 +294,18 @@ data <- bind_rows(covid_data_list_clean)
 
 
 
+# Sources
+
+
+
+Precipitation & Temperature Data
+1. https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/statewide/time-series
+
+Population Data
+2. https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html
+
+
+
 
 
 
