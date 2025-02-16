@@ -1,0 +1,33 @@
+Category Breakdown:
+Prefixes:
+
+ELSED – Elementary & Secondary Education
+HGRED – Higher Education
+TANF – Temporary Assistance for Needy Families
+OTCA – Other Cash Assistance
+MCAID – Medicaid
+CORR – Corrections
+TRANS – Transportation
+OTHER – Other Expenditures
+ELCAP – Elementary & Secondary Capital Expenditures
+HEDCP – Higher Education Capital Expenditures
+CORCP – Corrections Capital Expenditures
+TRCAP – Transportation Capital Expenditures
+HSCAP – Health & Social Services Capital Expenditures
+ENVCP – Environmental Capital Expenditures
+OTHCP – Other Capital Expenditures
+Funding Sources:
+
+GF – General Fund (State Revenue)
+FF – Federal Funds
+OF – Other State Funds (Dedicated Revenue)
+BF – Bonds (Debt Financing)
+TOT – Total Expenditure (Sum of all sources)
+Capital Expenditures:
+
+TOTAL_CAPI – Total Capital Investment per Capita
+TOTAL_CAP – Total Capital Expenditures
+GFTOT_CAP – General Fund Capital
+FFTOT_CAP – Federal Fund Capital
+OFTOT_CAP – Other State Fund Capital
+BFTOT_CAP – Bond Fund Capital
