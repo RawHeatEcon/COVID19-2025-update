@@ -7,3 +7,67 @@ After examining a subset of the data, the following operations need to be exucut
 *3. Last_Update column is in mm/dd/yyy hh:mm:ss AM format, Need to subtract 1 day since the data got updated early in the morning from the day before.
 4. If Active column is blank, replace with Confirmed column.
 5. If Recovered column is blank, replace with zero.
+
+
+
+Standardizing each data set by State-Year 
+
+
+Weather Data Transformations:
+/Weather Data
+
+1. Delete "station" column, min_rh and max_rh columns.
+2. Create new column named avg_temp, add min_temp_f and max_temp_f to calculate average temperature.
+3. Create new column named avg_dp, add min_dewpoint_f and max_dewpoint_f to calculate average dew point.
+4. Delete max_temp_f, min_temp_f, max_dewpoint_f, min_dewpoint_f.
+5. Change precip_in, avg_wind_speed_kts column names to avg_precip and avg_ws.
+6. Create new row, for date column put "yyyy" from first row. Then calculate average of all columns.
+7. Delete all other rows but the last one.
+8. Change Day column to Date.
+9. Add a new column in first position named State, that copies the corresponding file name into cell.
+10. Add a column after State, named Year, that is populated by the folder name the csv file is in.
+
+1. Repeat this procedure for each file in each year folder, and then combine into one file for all 4 years.
+
+
+New data structure should be:
+
+state, year, avg_temp, avg_dp, avg_precip, avg_ws, avg_rh
+
+
+Population 1 Data Transformations:
+pop_density, Population
+
+1. Change columns POPESTIMATE2020, POPESTIMATE2021, POPESTIMATE2022, POPESTIMATE2023 and Name to 2020, 2021, 2022, 2023 and State repectively.
+2. Combine pop_density and Population data sets.
+3. Reshape data from wide format to long, keeping the state and area columns the same, and pivoting 2020, 20201, 2022, 2023 with new column name year.
+4. Create pop_d column, divide area (sq. mi) column by Year column to calculate population density for each state for each year.
+
+
+New data structure should be:
+
+state, year, pop, pop_d 
+
+
+
+Population 2 Data Transformations:
+infant_elder_avg_age
+
+1. Change Name column to state.
+2. Change columns POPESTIMATE2020, POPESTIMATE2021, POPESTIMATE2022, POPESTIMATE2023 and Name to 2020, 2021, 2022, 2023 and State repectively.
+3. Delete all rows where sex = 1, 2 or 999 and all rows where age is between 6 and 64.
+4. Delete sex column.
+5. Reshape data from wide format to long, keeping the state and age columns the same, and pivoting 2020, 20201, 2022, 2023 with new column name year.
+6. Add a new column named pop_infant, For each state add population values where age is zero to including 5 and record in pop_infant.
+7. Add a new column named pop_elder, For each state add population values where age including 64 and up and record in pop_elder.
+8. Delete age column.
+
+
+New data structure should be:
+
+state, year, pop_infant, pop_elder
+
+
+
+
+
