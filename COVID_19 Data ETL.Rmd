@@ -10,10 +10,10 @@ output: pdf_document
 
 knitr::opts_chunk$set(echo = TRUE)
 require("knitr")
-
+# Setting working directory for the project
 opts_knit$set(root.dir = "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project")
 
-# Setting working directory for the project
+# Loading all necessary libraries
 
 library(tidyverse)  # Includes dplyr, ggplot2, tidyr, readr, etc.
 library(lubridate)  # For handling date conversions
@@ -23,14 +23,14 @@ library(car)        # Regression diagnostics
 library(mctest)     # Multicollinearity test
 library(MPV)        # Regression modeling
 library(cvTools)    # Cross-validation
-
-
-# Loading all necessary libraries
-
-#install.packages("gh")
-library(gh)  #using Github API to access datasets rather than storing them on local machine
-
-
+library(gh)         # using Github API to access datasets rather than storing them on local machine
+library(httr)       #
+library(gitcreds)   #
+library(usethis)    #
+#install.packages("httr2",type="binary")
+library(httr2)      #
+library(readr)
+library(purrr)
 
 
 ```
@@ -46,12 +46,6 @@ library(gh)  #using Github API to access datasets rather than storing them on lo
 
 ```{r, warning = FALSE, message = FALSE}
 
-#install.packages("httr")
-#install.packages("gitcreds")  # For managing GitHub credentials
-#install.packages("usethis")   # For GitHub authentication setup
-library(httr)
-library(gitcreds)
-library(usethis)
 
 ```
 
@@ -95,8 +89,7 @@ Sys.setenv(GITHUB_PAT = gitcreds_get()$password)
 ## Initial Data Import
 
 ```{r, warning = FALSE, message = FALSE}
-#install.packages("httr2",type="binary")
-library(httr2)
+## Preliminary GitHub testing
 # GitHub repository details
 repo <- "CSSEGISandData/COVID-19"
 path <- "csse_covid_19_data/csse_covid_19_daily_reports_us"
@@ -144,9 +137,8 @@ for (file in csv_files) {
     cat("Skipping missing file:", file, "\n")
   }
 }
-#Problem here since, the original GitHub repository directory has been truncated to 1,000 files, ommitting 63 files
+#Problem here since, the original GitHub repository directory has been truncated to 1,000 files, omitting 63 files
 
-# Combine the data if needed (e.g., bind them into one large data frame)
 #combined_data <- do.call(rbind, covid_data_list)
 
 # Check the combined data
@@ -164,19 +156,19 @@ summary(covid_data_list)
 # Standardizing Data and Combining All Datasets
 
 ```{r, warning = FALSE, message = FALSE}
-# --- Defining the banned strings and pattern for row removal ---
+#Defining the banned strings and pattern for row removal
 ban_list <- c("American Samoa", "Diamond Princess", "Grand Princess", "Guam", 
               "Northern Mariana Islands", "Puerto Rico", "Virgin Islands",
               "District of Columbia", "Recovered")
-# Creating a regex pattern (the matching will be case-insensitive)
+#Creating a regex pattern (the matching will be case-insensitive)
 ban_pattern <- paste(ban_list, collapse = "|")
 
-# --- Defining the column names to remove (case-insensitive) ---
+#Defining the column names to remove (case-insensitive)
 cols_to_remove <- c("FIPS", "Total_Test_Results", "People_Hospitalized",
                     "Case_Fatality_Ratio", "UID", "ISO3", "Testing_Rate", "Hospitalization_Rate",
                     "People_Tested", "Mortality_Rate", "Date","Incident_Rate")
 
-# --- Process each data frame in covid_data_list ---
+#Process each data frame in covid_data_list
 covid_data_list_clean <- lapply(covid_data_list, function(df) {
   
   # Step 1: Remove rows based on banned values in columns whose name contains "State" or "Province"
@@ -257,9 +249,6 @@ if (all_have_50_rows) {
   print("Some CSV files do not have exactly 50 rows.")
 }
 
-
-
-
 ```
 
 
@@ -275,10 +264,6 @@ data <- bind_rows(covid_data_list_clean)
 
 
 ```{r, warning = FALSE, message = FALSE}
-library(readr)
-library(purrr)
-
-
 # Defining the main data directory
 main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Weather Data"
 
@@ -344,6 +329,96 @@ write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
 ```
 
 ## Kentucky Data set is missing relative humidity values**
+#Fixed
+
+
+#Population Data Transformations
+
+```{r, warning = FALSE, message = FALSE}
+
+# Reading the data
+df <- read.csv("./Data/Population.csv")
+
+# Reshaping data from wide to long format
+df_long <- df %>%
+  pivot_longer(cols = 2:5, names_to = "year", values_to = "pop_d") %>%
+  mutate(year = sub("^X", "", year))  # Removes "X" from year values
+
+
+print(df_long)
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+
+df <- read.csv("./Data/infant_elder_avg_age.csv", check.names = FALSE)
+
+# Rename columns
+df <- df %>%
+  rename(state = NAME,
+         `2020` = POPEST2020_CIV,
+         `2021` = POPEST2021_CIV,
+         `2022` = POPEST2022_CIV,
+         `2023` = POPEST2023_CIV)
+
+# Reshape from wide to long format for years
+df_long <- df %>%
+  pivot_longer(cols = `2020`:`2023`, names_to = "year", values_to = "population") 
+
+# Reshape 'AGE' from long to wide, using the actual records: "Infant percentage" and "elder percentage"
+df_final <- df_long %>%
+  pivot_wider(names_from = AGE, values_from = population) %>%
+  rename(pop_infant = `Infant percentage`, pop_elder = `elder percentage`)  # Use exact column names
+
+# Select only required columns
+df_final <- df_final %>%
+  select(state, year, pop_infant, pop_elder)
+
+# Display the transformed data
+print(df_final)
+
+
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+
+# Define the path to the data folder
+data_path <- "./Data/airport_traffic"
+
+# List of years corresponding to the files
+years <- 2020:2023
+
+# Create a named vector for state abbreviation-to-full-name mapping
+state_abbr <- setNames(state.name, state.abb)
+
+# Function to process each file
+process_file <- function(year) {
+  file <- file.path(data_path, paste0(year, ".csv"))
+  
+  df <- read.csv(file, check.names = FALSE) %>%
+    rename(state = STATE, enplanements = Enplanements) %>%  # Rename columns
+    mutate(state = state_abbr[state], year = year) %>%  # Convert state abbreviations to full names
+    drop_na(state)  # Drop rows where state conversion failed
+
+  return(df)
+}
+
+# Read and process all files
+df_list <- lapply(years, process_file)
+
+# Combine all years into one dataset
+df_combined <- bind_rows(df_list) %>%
+  group_by(state, year) %>%
+  summarise(enplanements = sum(enplanements, na.rm = TRUE), .groups = "drop")
+
+# Display the transformed dataset
+print(df_combined)
+
+```
+
+
+
 ```{r, warning = FALSE, message = FALSE}
 
 ```
@@ -353,6 +428,19 @@ write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
 
 ```
 
+
+```{r, warning = FALSE, message = FALSE}
+
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+```
 
 
 ## Variables List
