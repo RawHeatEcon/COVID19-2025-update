@@ -278,7 +278,8 @@ data <- bind_rows(covid_data_list_clean)
 library(readr)
 library(purrr)
 
-# Defining the main data directory for the weather data
+
+# Defining the main data directory
 main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Weather Data"
 
 # Listing all year folders
@@ -290,25 +291,35 @@ process_weather_file <- function(file_path, year) {
   state <- tools::file_path_sans_ext(basename(file_path))
   
   # Read the CSV file
-  df <- read_csv(file_path, show_col_types = FALSE) %>%
-    # Remove unnecessary columns
-    select(-station, -day, -min_rh, -max_rh) %>%
+  df <- read_csv(file_path, show_col_types = FALSE)
+  
+  # Check if columns exist before attempting to remove them
+  remove_cols <- c("station", "day", "min_rh", "max_rh")
+  remove_cols <- remove_cols[remove_cols %in% colnames(df)]  # Keep only existing columns
+  
+  df <- df %>%
+    select(-all_of(remove_cols)) %>%
     
     # Create avg_temp column
-    mutate(avg_temp = ifelse(is.na(min_temp_f) | is.na(max_temp_f), NA, (min_temp_f + max_temp_f) / 2),
+    mutate(avg_temp = ifelse("min_temp_f" %in% names(df) & "max_temp_f" %in% names(df) &
+                             !is.na(min_temp_f) & !is.na(max_temp_f),
+                             (min_temp_f + max_temp_f) / 2, NA),
            
            # Create avg_dp column
-           avg_dp = ifelse(is.na(min_dewpoint_f) | is.na(max_dewpoint_f), NA, (min_dewpoint_f + max_dewpoint_f) / 2)) %>%
+           avg_dp = ifelse("min_dewpoint_f" %in% names(df) & "max_dewpoint_f" %in% names(df) &
+                           !is.na(min_dewpoint_f) & !is.na(max_dewpoint_f),
+                           (min_dewpoint_f + max_dewpoint_f) / 2, NA)) %>%
     
-    # Remove min/max temp and dewpoint columns
-    select(-max_temp_f, -min_temp_f, -max_dewpoint_f, -min_dewpoint_f) %>%
+    # Remove min/max temp and dewpoint columns if they exist
+    select(-any_of(c("max_temp_f", "min_temp_f", "max_dewpoint_f", "min_dewpoint_f"))) %>%
     
-    # Rename columns
-    rename(avg_precip = precip_in, avg_ws = avg_wind_speed_kts) %>%
+    # Rename columns if they exist
+    rename_with(~ c("avg_precip", "avg_ws")[match(.x, c("precip_in", "avg_wind_speed_kts"))], 
+                .cols = any_of(c("precip_in", "avg_wind_speed_kts"))) %>%
     
     # Add Year column
     mutate(Year = year)
-  
+
   # Compute yearly averages for numeric columns (excluding NULLs)
   yearly_avg <- df %>%
     summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE))) %>%
@@ -332,7 +343,7 @@ all_data <- map_dfr(year_folders, function(year) {
 write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
 ```
 
-
+## Kentucky Data set is missing relative humidity values**
 ```{r, warning = FALSE, message = FALSE}
 
 ```
