@@ -275,7 +275,61 @@ data <- bind_rows(covid_data_list_clean)
 
 
 ```{r, warning = FALSE, message = FALSE}
+library(readr)
+library(purrr)
 
+# Defining the main data directory for the weather data
+main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Weather Data"
+
+# Listing all year folders
+year_folders <- c("2020", "2021", "2022", "2023")
+
+# Function to process each file
+process_weather_file <- function(file_path, year) {
+  # Extract state name from file name (without extension)
+  state <- tools::file_path_sans_ext(basename(file_path))
+  
+  # Read the CSV file
+  df <- read_csv(file_path, show_col_types = FALSE) %>%
+    # Remove unnecessary columns
+    select(-station, -day, -min_rh, -max_rh) %>%
+    
+    # Create avg_temp column
+    mutate(avg_temp = ifelse(is.na(min_temp_f) | is.na(max_temp_f), NA, (min_temp_f + max_temp_f) / 2),
+           
+           # Create avg_dp column
+           avg_dp = ifelse(is.na(min_dewpoint_f) | is.na(max_dewpoint_f), NA, (min_dewpoint_f + max_dewpoint_f) / 2)) %>%
+    
+    # Remove min/max temp and dewpoint columns
+    select(-max_temp_f, -min_temp_f, -max_dewpoint_f, -min_dewpoint_f) %>%
+    
+    # Rename columns
+    rename(avg_precip = precip_in, avg_ws = avg_wind_speed_kts) %>%
+    
+    # Add Year column
+    mutate(Year = year)
+  
+  # Compute yearly averages for numeric columns (excluding NULLs)
+  yearly_avg <- df %>%
+    summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE))) %>%
+    mutate(Year = year, State = state)
+  
+  return(yearly_avg)
+}
+
+# Process all files in each year folder
+all_data <- map_dfr(year_folders, function(year) {
+  year_path <- file.path(main_dir, year)
+  
+  # Get all CSV files in the folder
+  csv_files <- list.files(year_path, pattern = "\\.csv$", full.names = TRUE)
+  
+  # Process each file
+  map_dfr(csv_files, function(file) process_weather_file(file, year))
+})
+
+# Save final combined dataset
+write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
 ```
 
 
@@ -290,30 +344,90 @@ data <- bind_rows(covid_data_list_clean)
 
 
 
+## Variables List
+Median Household Income	Days_Until_Lockdown	Distance_To_Nearest_Epicenter	Airport_Presence	Beach_Presence	Number_Of_State_Parks
 
+READY $y_1$ *(Dependent Variable) = Daily Deaths Reported*
 
+READY $y_2$ *(Dependent Variable) = Daily Cases Reported*
+
+READY $y_3$ *(Dependent Variable) = Daily Recovered Reported*
+
+READY $x_1$ *(Independent Variable) = Average Precipitation per Year*
+
+READY $x_2$ *(Independent Variable) = Average Wind Speed per Year*
+
+READY $x_3$ *(Independent Variable) = Average Relative Humidity per Year*
+
+READY $x_4$ *(Independent Variable) = Average Dew Point per Year*
+
+READY $x_5$ *(Independent Variable) = Average Temperature per Year*
+
+READY $x_6$ *(Independent Variable) = Total Population per Year*
+
+READY $x_7$ *(Independent Variable) = Total Population Density (p/mi^2 | person per square mile) per Year*
+
+READY $x_{8}$ *(Independent Variable) = Elder population 65 >= %*
+
+READY $x_{9}$ *(Independent Variable) = Infant population 5 <= %*
+
+READY $x_8$ *(Independent Variable) = Number of days between first US case and lock down/shelter-in-place order*
+
+READY $x_9$ *(Independent Variable) = Distance from capital to the closest of the 5 states with the first case*
+
+READY $x_{10}$ *(Independent Variable) = If the state has an airport*
+
+READY $x_{15}$ *(Independent Variable) = If the state has a beach*
+
+READY $x_{16}$ *(Independent Variable) = Number of state parks*
+
+READY $x_6$ *(Independent Variable) = State Expenditures for the Fiscal Year*
+
+READY $x_{17}$ *(Independent Variable) = Airport Traffic*
+
+READY $x_{20}$ *(Independent Variable) = Poverty percentage*
+
+READY $x_{21}$ *(Independent Variable) = Unemployment percentage*
+
+READY $x_{22}$ *(Independent Variable) = Median household income*
+
+READY $x_{23}$ *(Independent Variable) = deaths/cases*
 
 
 # Sources
 
-
+Main Covid19 Data
+1. https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_daily_reports_us
 
 Precipitation & Temperature Data
-1. https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/statewide/time-series
+2. https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/statewide/time-series
 
 Population & Birth Rate Data
-2. https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html
+3. https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html
 
 Land Area Data
-3. https://github.com/jakevdp/data-USstates/blob/master/state-areas.csv
+4. https://github.com/jakevdp/data-USstates/blob/master/state-areas.csv
 
 Relative Humidity and Average Dewpoint Data
-4. https://www.ncei.noaa.gov/cdo-web/
+5. https://www.ncei.noaa.gov/cdo-web/
 
 Uninsured Rates Data
-5. https://www.shadac.org/news/2023-acs-tables-state-and-county-uninsured-rates-comparison-year-2022
+6. https://www.shadac.org/news/2023-acs-tables-state-and-county-uninsured-rates-comparison-year-2022
 
+State Expenditures Data
+7. https://nasbo.org/commerce/datasets
 
+Enplanement Data
+8. https://www.faa.gov/airports/planning_capacity/passenger_allcargo_stats/passenger
+
+Any and all Climate Data
+9. https://mesonet.agron.iastate.edu/request/daily.phtml?
+
+Poverty and Income Data
+10. https://www.census.gov/programs-surveys/saipe/data/datasets.html
+
+Unemployment Rates Data
+11. https://www.bls.gov/lau/tables.htm#stateaa
 
 
 
