@@ -257,8 +257,7 @@ if (all_have_50_rows) {
 
 
 ```{r, warning = FALSE, message = FALSE}
-data <- bind_rows(covid_data_list_clean)
-
+covid_df <- bind_rows(covid_data_list_clean)
 
 ```
 
@@ -325,7 +324,9 @@ all_data <- map_dfr(year_folders, function(year) {
 })
 
 # Save final combined dataset
-write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
+#write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
+
+weather_df <- read.csv("./Data/Weather Data/combined_weather_data.csv", check.names = FALSE)
 ```
 
 ## Kentucky Data set is missing relative humidity values**
@@ -340,12 +341,12 @@ write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
 df <- read.csv("./Data/Population.csv")
 
 # Reshaping data from wide to long format
-df_long <- df %>%
+population_df <- df %>%
   pivot_longer(cols = 2:5, names_to = "year", values_to = "pop_d") %>%
   mutate(year = sub("^X", "", year))  # Removes "X" from year values
 
 
-print(df_long)
+print(population_df)
 ```
 
 
@@ -366,16 +367,16 @@ df_long <- df %>%
   pivot_longer(cols = `2020`:`2023`, names_to = "year", values_to = "population") 
 
 # Reshape 'AGE' from long to wide, using the actual records: "Infant percentage" and "elder percentage"
-df_final <- df_long %>%
+population2_df <- df_long %>%
   pivot_wider(names_from = AGE, values_from = population) %>%
   rename(pop_infant = `Infant percentage`, pop_elder = `elder percentage`)  # Use exact column names
 
 # Select only required columns
-df_final <- df_final %>%
+population2_df <- df_final %>%
   select(state, year, pop_infant, pop_elder)
 
 # Display the transformed data
-print(df_final)
+print(population2_df)
 
 
 ```
@@ -408,15 +409,22 @@ process_file <- function(year) {
 df_list <- lapply(years, process_file)
 
 # Combine all years into one dataset
-df_combined <- bind_rows(df_list) %>%
+traffic_df <- bind_rows(df_list) %>%
   group_by(state, year) %>%
   summarise(enplanements = sum(enplanements, na.rm = TRUE), .groups = "drop")
 
 # Display the transformed dataset
-print(df_combined)
+print(traffic_df)
 
 ```
 
+
+
+```{r, warning = FALSE, message = FALSE}
+income_df <- read.csv("./Data/poverty_income/Income.csv", check.names = FALSE)
+
+
+```
 
 
 ```{r, warning = FALSE, message = FALSE}
@@ -433,10 +441,91 @@ print(df_combined)
 
 ```
 
+```{r, warning = FALSE, message = FALSE}
+#covid_df <- as.data.frame(covid_df)
+#population_df <- as.data.frame(population_df)
+#population2_df <- as.data.frame(population2_df)
+#traffic_df <- as.data.frame(traffic_df)
+
+#head(covid_df)
+#head(population_df)
+#head(weather_df)
+#head(population2_df)
+#head(traffic_df)
+#head(income_df)
+
+
+covid_df <- covid_df %>%
+  select("State" = names(covid_df)[1], "Date" = names(covid_df)[3], names(covid_df)[4], names(covid_df)[5], names(covid_df)[6], names(covid_df)[7], names(covid_df)[8], names(covid_df)[9])
+
+head(covid_df)
+
+
+population_df <- population_df %>%
+  select("State" = names(population_df)[1], "Year" = names(population_df)[2], names(population_df)[3])
+
+head(population_df)
+
+
+weather_df <- weather_df %>%
+  select(names(weather_df)[7], names(weather_df)[6], names(weather_df)[1], names(weather_df)[2], names(weather_df)[3], names(weather_df)[4], names(weather_df)[5])
+
+head(weather_df)
+
+
+population2_df <- population2_df %>%
+  select("State" = names(population2_df)[1], "Year" = names(population2_df)[2], names(population2_df)[3], names(population2_df)[4])
+
+head(population2_df)
+
+
+traffic_df <- traffic_df %>%
+  select("State" = names(traffic_df)[1], "Year" = names(traffic_df)[2], names(traffic_df)[3])
+
+head(traffic_df)
+
+
+income_df <- income_df %>%
+#  rename("State" = names(income_df)[0], "Year" = names(income_df)[1]) %>%
+  select("State" = names(income_df)[1], "Year" = names(income_df)[2], names(income_df)[3], names(income_df)[4])
+
+head(income_df)
+
+```
+
+
+
+
+```{r, warning = FALSE, message = FALSE}
+sapply(covid_df,class)
+sapply(population_df,class)
+sapply(weather_df,class)
+sapply(population2_df,class)
+sapply(traffic_df,class)
+sapply(income_df,class)
+
+
+```
+
 
 ```{r, warning = FALSE, message = FALSE}
 
 ```
+
+
+```{r, warning = FALSE, message = FALSE}
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+
+```
+
 
 ```{r, warning = FALSE, message = FALSE}
 
