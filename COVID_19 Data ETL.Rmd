@@ -44,21 +44,15 @@ library(purrr)
 ## Setting up GitHub Authentication
 
 
-```{r, warning = FALSE, message = FALSE}
-
-
-```
-
-
 
 ```{r, warning = FALSE, message = FALSE}
-gitcreds_set()
+#gitcreds_set()
 
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
-gitcreds_get()
+#gitcreds_get()
 
 ```
 
@@ -79,7 +73,7 @@ gitcreds_get()
 
 ```{r, warning = FALSE, message = FALSE}
 
-Sys.setenv(GITHUB_PAT = gitcreds_get()$password)
+#Sys.setenv(GITHUB_PAT = gitcreds_get()$password)
 ```
 
 
@@ -422,38 +416,131 @@ print(traffic_df)
 
 ```{r, warning = FALSE, message = FALSE}
 income_df <- read.csv("./Data/poverty_income/Income.csv", check.names = FALSE)
-
-
+regressors_df <- read.csv("./Data/Regressors.csv", check.names = FALSE)
+weather_df <- read.csv("./Data/Weather Data/combined_weather_data.csv", check.names = FALSE)
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
 
-```
+# Define the directory path
+data_dir <- "./Data/Average State Percipitation"
 
+# Get list of CSV files
+csv_files <- list.files(path = data_dir, pattern = "\\.csv$", full.names = TRUE)
+
+# Initialize empty list to store processed dataframes
+df_list <- list()
+
+# Process each file
+for (file in csv_files) {
+  
+  # Read CSV, skipping first 4 rows and without predefined headers
+  df <- read_csv(file, skip = 4, col_names = FALSE, col_types = cols(.default = "c"))
+  
+
+  # Manually set column names
+  colnames(df) <- c("Year", "Value")
+  
+  # Convert Year to character
+  df$Year <- as.character(df$Year)
+  
+  # Extract Month (MM) from Year column (YYYYMM format)
+  df <- df %>%
+    mutate(Month = substr(Year, 5, 6)) %>%
+    relocate(Month, .after = Year)
+  
+  # Keep only the YYYY part in the Year column
+  df$Year <- substr(df$Year, 1, 4)
+  
+  # Extract State name from file name
+  state_name <- tools::file_path_sans_ext(basename(file))
+  
+  # Add State column at the first position
+  df <- df %>%
+    mutate(State = state_name) %>%
+    relocate(State, .before = Year)
+  
+  # Store cleaned dataframe
+  df_list[[length(df_list) + 1]] <- df
+}
+
+
+
+precip_m_df <- bind_rows(df_list)
+  
+# Print the cleaned dataframe head
+head(precip_m_df)
+
+```
 
 ```{r, warning = FALSE, message = FALSE}
 
+# Define the directory path
+data_dir <- "./Data/Average State Temperatures"
+
+# Get list of CSV files
+csv_files <- list.files(path = data_dir, pattern = "\\.csv$", full.names = TRUE)
+
+# Initialize empty list to store processed dataframes
+df_list <- list()
+
+# Process each file
+for (file in csv_files) {
+  
+  # Read CSV, skipping first 4 rows and without predefined headers
+  df <- read_csv(file, skip = 4, col_names = FALSE, col_types = cols(.default = "c"))
+  
+
+  # Manually set column names
+  colnames(df) <- c("Year", "Value")
+  
+  # Convert Year to character
+  df$Year <- as.character(df$Year)
+  
+  # Extract Month (MM) from Year column (YYYYMM format)
+  df <- df %>%
+    mutate(Month = substr(Year, 5, 6)) %>%
+    relocate(Month, .after = Year)
+  
+  # Keep only the YYYY part in the Year column
+  df$Year <- substr(df$Year, 1, 4)
+  
+  # Extract State name from file name
+  state_name <- tools::file_path_sans_ext(basename(file))
+  
+  # Add State column at the first position
+  df <- df %>%
+    mutate(State = state_name) %>%
+    relocate(State, .before = Year)
+  
+  # Store cleaned dataframe
+  df_list[[length(df_list) + 1]] <- df
+}
+
+
+
+temp_m_df <- bind_rows(df_list)
+  
+# Print the cleaned dataframe head
+head(temp_m_df)
+
 ```
 
 
+
 ```{r, warning = FALSE, message = FALSE}
+head(regressors_df)
 
 ```
 
 ```{r, warning = FALSE, message = FALSE}
-#covid_df <- as.data.frame(covid_df)
-#population_df <- as.data.frame(population_df)
-#population2_df <- as.data.frame(population2_df)
-#traffic_df <- as.data.frame(traffic_df)
-
-#head(covid_df)
-#head(population_df)
-#head(weather_df)
-#head(population2_df)
-#head(traffic_df)
-#head(income_df)
-
+covid_df <- as.data.frame(covid_df)
+population_df <- as.data.frame(population_df)
+population2_df <- as.data.frame(population2_df)
+traffic_df <- as.data.frame(traffic_df)
+precip_m_df <- as.data.frame(precip_m_df)
+temp_m_df <-  as.data.frame(temp_m_df)
 
 covid_df <- covid_df %>%
   select("State" = names(covid_df)[1], "Date" = names(covid_df)[3], names(covid_df)[4], names(covid_df)[5], names(covid_df)[6], names(covid_df)[7], names(covid_df)[8], names(covid_df)[9])
@@ -491,45 +578,206 @@ income_df <- income_df %>%
 
 head(income_df)
 
+temp_m_df <- temp_m_df %>%
+  mutate(State = as.character(State),     # Convert numeric → integer
+         Year = as.integer(Year),
+         Month = as.integer(Month),
+         avg_temp_m = as.numeric(Value)) %>%
+  select(State, Year, Month, avg_temp_m)
+head(temp_m_df)
+
+precip_m_df <- precip_m_df %>%
+  mutate(State = as.character(State),     # Convert numeric → integer
+         Year = as.integer(Year),
+         Month = as.integer(Month),
+         avg_percip_m = as.numeric(Value)) %>%
+  select(State, Year, Month, avg_percip_m)
+head(precip_m_df)
+
+
 ```
 
 
 
 
 ```{r, warning = FALSE, message = FALSE}
-sapply(covid_df,class)
-sapply(population_df,class)
-sapply(weather_df,class)
-sapply(population2_df,class)
-sapply(traffic_df,class)
-sapply(income_df,class)
+#sapply(covid_df,class)
+sapply(population_df,class) # year(2) char to int
+#sapply(weather_df,class)
+sapply(population2_df,class) # year(2) char to int
+#sapply(traffic_df,class)
+sapply(income_df,class) # poverty percent(3) & median income(4) from character to int
 
 
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
+population_df <- population_df %>%
+  mutate(Year = as.integer(Year)     # Convert numeric → integer
+         )
+# Check column types
+sapply(population_df, class)
+
+
+population2_df <- population2_df %>%
+  mutate(Year = as.integer(Year)     # Convert numeric → integer
+         )
+# Check column types
+sapply(population2_df, class)
+
+
+income_df <- income_df %>%
+  mutate(Poverty_Percent = as.numeric(Poverty_Percent),     # Convert numeric → integer
+         Median_Household_Income = as.integer(gsub(",", "",Median_Household_Income))
+         )
+# Check column types
+sapply(income_df, class)
+
+
+covid_df <- covid_df %>%
+  mutate(Confirmed = as.integer(Confirmed),     # Convert numeric → integer
+         Deaths = as.integer(Deaths),
+         Recovered = as.integer(Recovered),
+         Active = as.integer(Active)
+         )
+# Check column types
+sapply(covid_df, class)
+
+
 
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
+head(covid_df)
+head(population_df)
+head(weather_df)
+head(population2_df)
+head(traffic_df)
+head(income_df)
+head(regressors_df)
+head(precip_m_df)
+head(temp_m_df)
 
 ```
 
 ```{r, warning = FALSE, message = FALSE}
+covid_df <- covid_df %>%
+  mutate(Year = as.integer(format(Date, "%Y")),
+         Month = as.integer(format(Date, "%m")))%>%
+  select(names(covid_df)[1], Year, Month, everything())
+
+head(covid_df)
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+# Left join using composite key (State + Year)
+rolling_avg <- covid_df %>%
+  left_join(temp_m_df, by = c("State","Year","Month"))%>%
+  left_join(precip_m_df, by = c("State", "Year","Month"))
+
+Descriptive_data_df <- population_df %>%
+  left_join(weather_df, by = c("State", "Year")) %>%
+  left_join(population2_df, by = c("State", "Year")) %>%
+  left_join(traffic_df, by = c("State", "Year")) %>%
+  left_join(income_df, by = c("State", "Year")) %>%
+  left_join(regressors_df, by = c("State", "Year"))
+  
+
+head(Descriptive_data_df)
+head(rolling_avg)
+
+
+Data_df <- Descriptive_data_df %>%
+  left_join(rolling_avg, by =c("State","Year"))
+
+head(Data_df)
+
+
+```
+
+
+# Plotting variables
+```{r, warning = FALSE, message = FALSE}
+Data_df <- Data_df %>%
+  select(names(Data_df)[1], names(Data_df)[2], names(Data_df)[19], names(Data_df)[20], names(Data_df)[21], names(Data_df)[22], everything(),-Active)
+
+head(Data_df)
+
+summary(Data_df)
+str(Data_df)
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+plot(Data_df$Date, Data_df$avg_precip, type = "l", col = "blue",
+     xlab = "Date", ylab = "Rain (In.)", main = "Percipitaion")
+
+plot(Data_df$Date, Data_df$avg_ws, type = "l", col = "blue",
+     xlab = "Date", ylab = "Speed (kts.)", main = "Wind Speed")
+
+plot(Data_df$Date, Data_df$avg_temp, type = "l", col = "blue",
+     xlab = "Date", ylab = "Temp *C", main = "Temperature")
+
+plot(Data_df$Date, Data_df$avg_dp, type = "l", col = "blue",
+     xlab = "Date", ylab = "Dew Point *C", main = "Dew point")
+
+plot(Data_df$Date, Data_df$Confirmed, type = "l", col = "blue",
+     xlab = "Date", ylab = "Confirmed Cases", main = "Confirmed")
+
+plot(Data_df$Date, Data_df$Deaths, type = "l", col = "blue",
+     xlab = "Date", ylab = "Deaths", main = "Deaths")
+
+plot(Data_df$Date, Data_df$Recovered, type = "l", col = "blue",
+     xlab = "Date", ylab = "Recovered", main = "Recovered")
+
+
+
+
+
 
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
+acf(Data_df$avg_precip, main = "Autocorrelation Plot")
+acf(Data_df$avg_dp, main = "Autocorrelation Plot")
+acf(Data_df$avg_ws, main = "Autocorrelation Plot")
+acf(Data_df$avg_temp, main = "Autocorrelation Plot")
+acf(Data_df$Confirmed, main = "Autocorrelation Plot")
+acf(Data_df$Deaths, main = "Autocorrelation Plot")
+acf(Data_df$Recovered, main = "Autocorrelation Plot")
+
 
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
+library(tseries)
+adf.test(Data_df$avg_temp)  # Check stationarity
+adf.test(Data_df$Confirmed)
+```
+
+## Correlation matrix
+```{r, warning = FALSE, message = FALSE}
+cor_matrix <- cor(Data_df, method = "pearson") 
 
 ```
+
+
+```{r, warning = FALSE, message = FALSE}
+plot(Data_df$Date, Data_df$avg_temp, type="l", col="blue", main="Temperature Over Time")
+plot(Data_df$Date, Data_df$Confirmed, type="l", col="red", main="COVID Cases Over Time")
+
+```
+
+
+
+
+
+
 
 
 ## Variables List
