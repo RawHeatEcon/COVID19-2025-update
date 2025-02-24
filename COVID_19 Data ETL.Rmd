@@ -1,12 +1,46 @@
 ---
 title: "COVID-19 Data ETL"
 author: "Rohit Kumar"
-date: "2025-02-08"
-output: pdf_document
+date: "02/08/2025"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+  html_document:
+    toc: yes
+    toc_depth: 6
+    number_sections: no
+toc-title: Table of Contents
 ---
 
 
-```{r setup, warning = FALSE, message = FALSE, include = FALSE}
+
+> <u>**P3**</u>
+
+# Purpose
+
+## Background
+
+The new decade has begun with a very rocky start with the US and Iran almost at the brink of war, the Russian-Ukrainian war, Australian Bush fires, East African Locust swarms, earthquakes, devastating floods upon other things, but the COVID-19 Pandemic has slowly descending upon humanity as the deadliest event yet. In the following analysis, I make sense of how the daily deaths due to COVID-19 compares to the individual states' quickness of lock down, population size by state, and distance of case from the first 5 cases in the USA amongst other variables.
+
+
+# Data Acquisition
+
+In order to help aid in predicting the spread of this virus and just analyzing the previous path of the virus I will be using data collected by the John Hopkins Center for Systems Science and Engineering.
+The data is being further sourced from WHO, CDC, ECDC, NHC, DXY, 1point3acres, Worldometers.info, BNO, the COVID Tracking Project (testing and hospitalizations), state and national government health departments, and local media reports.
+The data set was found on [Kaggle](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series). Alongside this data set, a new data set was created by compiling numerous statistics specific to each US state. These statistics were curated via multiple government websites, after thorough research into possible connections between the US states and the spread of Covid-19. First we will look at the basic summary statistics to show light on the general picture of what we are working with and then moving on to more robust analysis via regression analysis. We will then use forecasting to predict the future of this pandemic. 
+
+This pandemic is one of the most important events happening right now and the way we react and approach it will affect our lives forever. Understanding it bit by bit will at least somewhat help us in making the decisions to combat COVID-19, which is very important to our survival on this planet.
+
+
+<br>
+
+
+## Libraries
+
+The following libraries were used in the analysis:
+*tidyverse, lubridate, broom, oslrr, car, mctest, MPV, cvTools, gh, gitcreds, usethis, httr, httr2(binary)*
+```{r setup, echo = TRUE, warning = FALSE, message = FALSE, results = "hide"}
 
 knitr::opts_chunk$set(echo = TRUE)
 require("knitr")
@@ -14,79 +48,72 @@ require("knitr")
 opts_knit$set(root.dir = "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project")
 
 # Loading all necessary libraries
-
-library(tidyverse)  # Includes dplyr, ggplot2, tidyr, readr, etc.
-library(lubridate)  # For handling date conversions
-library(broom)      # For tidying model outputs
-library(olsrr)      # For regression diagnostics
-library(car)        # Regression diagnostics
-library(mctest)     # Multicollinearity test
-library(MPV)        # Regression modeling
-library(cvTools)    # Cross-validation
-library(gh)         # using Github API to access datasets rather than storing them on local machine
-library(httr)       #
-library(gitcreds)   #
-library(usethis)    #
-#install.packages("httr2",type="binary")
-library(httr2)      #
-library(readr)
-library(purrr)
-
+library(tidyverse)
+library(lubridate)
+library(broom)
+library(olsrr)
+library(car)
+library(mctest)
+library(MPV)
+library(cvTools)
+library(gh)
+library(httr)       
+library(gitcreds)   
+library(usethis)    
+suppressMessages(suppressWarnings(install.packages("httr2",type="binary")))
+library(httr2)
 
 ```
 
+<br>
 
 
+## GitHub Authentication
 
-# Data Import
-
-
-## Setting up GitHub Authentication
-
-
-
-```{r, warning = FALSE, message = FALSE}
-#gitcreds_set()
-
+We set up our Git credentials, verify them and add our GitHub token in order to access Covid data through the GitHub API. We store the token and any passwords locally for security reasons.
+@1.
+```{r, echo = TRUE, eval = FALSE}
+#Setting up Git credentials
+gitcreds_set()
 ```
-
-
-```{r, warning = FALSE, message = FALSE}
-#gitcreds_get()
-
+@2.
+```{r, echo = TRUE, eval = FALSE}
+#Verifying Git credentials
+gitcreds_get()
 ```
-
-```{r, warning = FALSE, message = FALSE}
+@3.
+```{r, echo = TRUE, eval = FALSE}
 #Adding Token
-#usethis::edit_r_environ()  # Adding token manually to .Renviron
-#readRenviron("~/.Renviron") # Reloading the environment
-#Sys.getenv("GITHUB_PAT") # Making sure it is set
+usethis::edit_r_environ()  # Adding token manually to .Renviron
+readRenviron("~/.Renviron") # Reloading the environment
+Sys.getenv("GITHUB_PAT") # Making sure it is set
 
 
 #Testing Connection
-#usethis::gh_token_help()
-#response <- GET("https://api.github.com/user", authenticate("RawHeatEcon", Sys.getenv("GITHUB_PAT")))
-#content(response)
-
+usethis::gh_token_help()
+response <- GET("https://api.github.com/user", authenticate("RawHeatEcon", Sys.getenv("GITHUB_PAT")))
+content(response)
 ```
-
-
-```{r, warning = FALSE, message = FALSE}
-
-#Sys.setenv(GITHUB_PAT = gitcreds_get()$password)
+@4.
+```{r, echo = TRUE, eval = FALSE}
+#Automating GitHub authentication
+Sys.setenv(GITHUB_PAT = gitcreds_get()$password)
 ```
+<br>
 
 
+## Data Import
 
+<br>
 
+### COVID data
 
-## Initial Data Import
-
-```{r, warning = FALSE, message = FALSE}
-## Preliminary GitHub testing
+Downloading and cleaning the COVID-19 data sets from GitHub provided by John Hopkins University. We download all files and save them into a list, staging for processing.
+```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
 # GitHub repository details
 repo <- "CSSEGISandData/COVID-19"
 path <- "csse_covid_19_data/csse_covid_19_daily_reports_us"
+base_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports_us/"
 
 # Fetching all files in the directory using GitHub API
 file_list <- gh("GET /repos/{owner}/{repo}/contents/{path}", 
@@ -95,20 +122,6 @@ file_list <- gh("GET /repos/{owner}/{repo}/contents/{path}",
 # Extracting the file names and filtering for CSV files
 csv_files <- sapply(file_list, function(x) x$name)
 csv_files <- csv_files[grepl("\\.csv$", csv_files)]
-
-# List the CSV files
-head(csv_files)
-
-```
-
-
-
-
-
-
-```{r, warning = FALSE, message = FALSE}
-# Base URL for files
-base_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports_us/"
 
 # Initializing an empty list to store the data
 covid_data_list <- list()
@@ -131,68 +144,59 @@ for (file in csv_files) {
     cat("Skipping missing file:", file, "\n")
   }
 }
-#Problem here since, the original GitHub repository directory has been truncated to 1,000 files, omitting 63 files
-
-#combined_data <- do.call(rbind, covid_data_list)
-
-# Check the combined data
-#head(combined_data)
-
 ```
+***Here we encountered a problem since the original GitHub repository directory has been truncated to 1,000 files, omitting 63 files. For this analysis, we will only use data from these 1,000 files.***
 
-### Confirming Data Import 
+<br>
 
-```{r, warning = FALSE, message = FALSE}
-summary(covid_data_list)
-
-```
 
 # Standardizing Data and Combining All Datasets
 
-```{r, warning = FALSE, message = FALSE}
-#Defining the banned strings and pattern for row removal
+Upon further investigation, we need to rid the data frame of unnecessary observations and irrelevant variables. The original data included observations from *American Samoa*, *Diamond Princess*, *Grand Princess*, *Guam*, *Northern Mariana Islands*, *Puerto Rico*, *Virgin Islands* and *District of Columbia* **(the cruise ships which originally brought the virus to the west)**, which we are not interested in. We are only interested in the 50 United States of America. Several variables in the dataset were reviewed and determined to be unsuitable for our analysis, such as **"FIPS"**, **"Total_Test_Results"**, **"People_Hospitalized"**, **"Case_Fatality_Ratio"**, **"UID"**, **"ISO3"**, **"Testing_Rate"**, **"Hospitalization_Rate"**, **"People_Tested"**, **"Mortality_Rate"**, **"Date"**, **"Incident_Rate"**. Further, we address missing values in the active cases and recovered cases columns, adding appropriate values based on the data.
+```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+# Defining the banned strings and pattern for row removal
 ban_list <- c("American Samoa", "Diamond Princess", "Grand Princess", "Guam", 
               "Northern Mariana Islands", "Puerto Rico", "Virgin Islands",
               "District of Columbia", "Recovered")
-#Creating a regex pattern (the matching will be case-insensitive)
+# Creating a regex pattern (the matching will be case-insensitive)
 ban_pattern <- paste(ban_list, collapse = "|")
 
-#Defining the column names to remove (case-insensitive)
+# Defining the column names to remove (case-insensitive)
 cols_to_remove <- c("FIPS", "Total_Test_Results", "People_Hospitalized",
                     "Case_Fatality_Ratio", "UID", "ISO3", "Testing_Rate", "Hospitalization_Rate",
                     "People_Tested", "Mortality_Rate", "Date","Incident_Rate")
 
-#Process each data frame in covid_data_list
+# Processing each data frame in covid_data_list
 covid_data_list_clean <- lapply(covid_data_list, function(df) {
   
-  # Step 1: Remove rows based on banned values in columns whose name contains "State" or "Province"
-  # Identify columns to check (ignoring case)
+  # Removing rows based on banned values in columns whose name contains "State" or "Province"
+  # Identifying columns to check (ignoring case)
   cols_to_check <- names(df)[str_detect(names(df), regex("state|province", ignore_case = TRUE))]
   
   if (length(cols_to_check) > 0) {
-    # Filter out any row where at least one of the checked columns contains a banned string.
+    # Filtering out any row where at least one of the checked columns contains a banned string
     df <- df %>% 
       filter(!if_any(all_of(cols_to_check), ~ str_detect(.x, regex(ban_pattern, ignore_case = TRUE))))
   }
   
-  # Step 2: Remove unwanted columns (ignoring case)
-  # We compare the lower-case version of each column name.
+  # Removing unwanted columns (ignoring case)
+  # We compare the lower-case version of each column name
   df <- df %>% 
     select(-which(tolower(names(.)) %in% tolower(cols_to_remove)))
   
-  # Step 3: Replace missing values in "Active" with the corresponding value from "Confirmed"
-  # Locate the columns regardless of case.
+  # Replacing missing values in "Active" with the corresponding value from "Confirmed"
+  # Locating the columns regardless of case
   active_col <- names(df)[tolower(names(df)) == "active"]
   confirmed_col <- names(df)[tolower(names(df)) == "confirmed"]
   
   if (length(active_col) == 1 && length(confirmed_col) == 1) {
-    # Replace if NA or blank ("")
+    # Replacing if NA or blank ("")
     df[[active_col]] <- ifelse(is.na(df[[active_col]]) | df[[active_col]] == "",
                                df[[confirmed_col]],
                                df[[active_col]])
   }
   
-  # Step 4: Replace missing values in "Recovered" with 0
+  # Replacing missing values in "Recovered" with 0
   recovered_col <- names(df)[tolower(names(df)) == "recovered"]
   
   if (length(recovered_col) == 1) {
@@ -203,29 +207,20 @@ covid_data_list_clean <- lapply(covid_data_list, function(df) {
   
   return(df)
 })
-
-
-
-
-#covid_data_list
-
 ```
 
+<br>
 
 
-```{r, warning = FALSE, message = FALSE}
-head(covid_data_list_clean[[1]],50)
-#head(dataset_list[[1]])
-```
+## Verifying Data Standardization Before Merging
 
-#Making sure the data is standardized before combining
-
-```{r, warning = FALSE, message = FALSE}
-# Check if all CSVs have the same column names:
-# Get the column names from the first CSV
+After processing the vast quantity of files, we make sure each file consists of 50 rows of data, corresponding to the 50 states in the US, and that they don't include erroneous columns, or extra unnecessary data.
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+# Checking if all CSVs have the same column names:
+# Getting the column names from the first CSV
 first_names <- names(covid_data_list_clean[[1]])
 
-# Use purrr::map_lgl to compare each CSV's column names with the first CSV
+# Using purrr::map_lgl to compare each CSV's column names with the first CSV
 all_same_columns <- purrr::map_lgl(covid_data_list_clean, ~ identical(names(.x), first_names)) %>% all()
 
 if (all_same_columns) {
@@ -234,7 +229,7 @@ if (all_same_columns) {
   print("Not all CSV files have the same column names.")
 }
 
-# Check if each CSV has exactly 50 rows:
+# Checking if each CSV has exactly 50 rows:
 all_have_50_rows <- purrr::map_lgl(covid_data_list_clean, ~ nrow(.x) == 50) %>% all()
 
 if (all_have_50_rows) {
@@ -242,63 +237,54 @@ if (all_have_50_rows) {
 } else {
   print("Some CSV files do not have exactly 50 rows.")
 }
-
 ```
 
 
+# Weather Data Transformations
 
-
-
-
-```{r, warning = FALSE, message = FALSE}
-covid_df <- bind_rows(covid_data_list_clean)
-
-```
-
-
-```{r, warning = FALSE, message = FALSE}
+A portion of our weather data is saved in 4 folders separated by year, and labeled by state in each respective folder in the working directory. We process each file by creating a new column for the state, specifying the year column, removing granular data and calculating averages in order to smooth some statistics. We make sure the data has a `State` and `Year` column, as these will serve as join keys when combining our multiple data sets.
+```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
 # Defining the main data directory
 main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Weather Data"
 
 # Listing all year folders
 year_folders <- c("2020", "2021", "2022", "2023")
 
-# Function to process each file
+# Defining function to process each file
 process_weather_file <- function(file_path, year) {
-  # Extract state name from file name (without extension)
+  # Extracting state name from file name (without extension)
   state <- tools::file_path_sans_ext(basename(file_path))
   
-  # Read the CSV file
+  # Loading the data
   df <- read_csv(file_path, show_col_types = FALSE)
   
-  # Check if columns exist before attempting to remove them
+  # Removing unnecessary columns
   remove_cols <- c("station", "day", "min_rh", "max_rh")
-  remove_cols <- remove_cols[remove_cols %in% colnames(df)]  # Keep only existing columns
-  
+
   df <- df %>%
     select(-all_of(remove_cols)) %>%
     
-    # Create avg_temp column
+    # Creating avg_temp column
     mutate(avg_temp = ifelse("min_temp_f" %in% names(df) & "max_temp_f" %in% names(df) &
                              !is.na(min_temp_f) & !is.na(max_temp_f),
                              (min_temp_f + max_temp_f) / 2, NA),
            
-           # Create avg_dp column
+           # Creating avg_dp column
            avg_dp = ifelse("min_dewpoint_f" %in% names(df) & "max_dewpoint_f" %in% names(df) &
                            !is.na(min_dewpoint_f) & !is.na(max_dewpoint_f),
                            (min_dewpoint_f + max_dewpoint_f) / 2, NA)) %>%
     
-    # Remove min/max temp and dewpoint columns if they exist
+    # Removing min/max temp and dew point columns if they exist
     select(-any_of(c("max_temp_f", "min_temp_f", "max_dewpoint_f", "min_dewpoint_f"))) %>%
     
-    # Rename columns if they exist
+    # Renaming columns if they exist
     rename_with(~ c("avg_precip", "avg_ws")[match(.x, c("precip_in", "avg_wind_speed_kts"))], 
                 .cols = any_of(c("precip_in", "avg_wind_speed_kts"))) %>%
     
-    # Add Year column
+    # Adding Year column
     mutate(Year = year)
 
-  # Compute yearly averages for numeric columns (excluding NULLs)
+  # Computing yearly averages for numeric columns (excluding NULLs)
   yearly_avg <- df %>%
     summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE))) %>%
     mutate(Year = year, State = state)
@@ -306,49 +292,44 @@ process_weather_file <- function(file_path, year) {
   return(yearly_avg)
 }
 
-# Process all files in each year folder
+# Processing all files in each year folder
 all_data <- map_dfr(year_folders, function(year) {
   year_path <- file.path(main_dir, year)
   
-  # Get all CSV files in the folder
+  # Getting all CSV files in the folder
   csv_files <- list.files(year_path, pattern = "\\.csv$", full.names = TRUE)
   
-  # Process each file
+  # Processing each file
   map_dfr(csv_files, function(file) process_weather_file(file, year))
 })
-
-# Save final combined dataset
-#write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
-
-weather_df <- read.csv("./Data/Weather Data/combined_weather_data.csv", check.names = FALSE)
+# Saving final combined data set if needed
+# write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
 ```
 
-## Kentucky Data set is missing relative humidity values**
-#Fixed
+<br>
 
+# Population Data Transformations
 
-#Population Data Transformations
-
-```{r, warning = FALSE, message = FALSE}
-
+We reshape data from wide format to long, keeping the state and area columns the same, and pivoting `2020`, `2021`, `2022`, `2023` with new column name year. We ensure to include`State` and `Year` columns.
+```{r, echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE}
 # Reading the data
 df <- read.csv("./Data/Population.csv")
 
-# Reshaping data from wide to long format
+# Reshaping data from wide to long format for years
 population_df <- df %>%
   pivot_longer(cols = 2:5, names_to = "year", values_to = "pop_d") %>%
-  mutate(year = sub("^X", "", year))  # Removes "X" from year values
-
-
-print(population_df)
+  mutate(year = sub("^X", "", year))  
+# Removing "X" from year values (common when reading year column in csv files, R is reading s a string instead of integer)
 ```
 
+# Population Age Statistics Data Transformations
 
-```{r, warning = FALSE, message = FALSE}
-
+From the age statistics by population data, we reshape data from wide format to long, keeping the state column the same, and pivoting `2020`, `2021`, `2022`, `2023` with new column name year, and age percentage columns. We ensure to include`State` and `Year` columns.
+```{r, echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE}
+# Reading the data
 df <- read.csv("./Data/infant_elder_avg_age.csv", check.names = FALSE)
 
-# Rename columns
+# Renaming columns
 df <- df %>%
   rename(state = NAME,
          `2020` = POPEST2020_CIV,
@@ -356,185 +337,170 @@ df <- df %>%
          `2022` = POPEST2022_CIV,
          `2023` = POPEST2023_CIV)
 
-# Reshape from wide to long format for years
+# Reshaping from wide to long format for years
 df_long <- df %>%
   pivot_longer(cols = `2020`:`2023`, names_to = "year", values_to = "population") 
 
-# Reshape 'AGE' from long to wide, using the actual records: "Infant percentage" and "elder percentage"
+# Reshaping 'AGE' from long to wide, using the actual records: "Infant percentage" and "elder percentage"
 population2_df <- df_long %>%
   pivot_wider(names_from = AGE, values_from = population) %>%
   rename(pop_infant = `Infant percentage`, pop_elder = `elder percentage`)  # Use exact column names
 
-# Select only required columns
+# Selecting only required columns
 population2_df <- df_final %>%
   select(state, year, pop_infant, pop_elder)
-
-# Display the transformed data
-print(population2_df)
-
-
 ```
+<br>
 
 
+# Airport Traffic Data Transformations
+
+The airport traffic data, or enplanements per state from 2020-2023 is separated into 4 files corresponding to each respective year. We change the state abbreviation back to the full state name in order to ensure `State` column is consistent across all data frames. The enplanement data has been recorded from multiple states, each with multiple airports, so we group the data by state and aggregate it accordingly.
 ```{r, warning = FALSE, message = FALSE}
-
-# Define the path to the data folder
+# Defining the path to the data folder
 data_path <- "./Data/airport_traffic"
 
-# List of years corresponding to the files
+# Listing years corresponding to the files
 years <- 2020:2023
 
-# Create a named vector for state abbreviation-to-full-name mapping
+# Creating a named vector for state abbreviation-to-full-name mapping
 state_abbr <- setNames(state.name, state.abb)
 
-# Function to process each file
+# Defining function to process each file
 process_file <- function(year) {
   file <- file.path(data_path, paste0(year, ".csv"))
-  
+  # Renaming columns, converting state abbreviations to full names, and dropping rows where state conversion failed 
   df <- read.csv(file, check.names = FALSE) %>%
-    rename(state = STATE, enplanements = Enplanements) %>%  # Rename columns
-    mutate(state = state_abbr[state], year = year) %>%  # Convert state abbreviations to full names
-    drop_na(state)  # Drop rows where state conversion failed
+    rename(state = STATE, enplanements = Enplanements) %>%
+    mutate(state = state_abbr[state], year = year) %>%
+    drop_na(state)
 
   return(df)
 }
 
-# Read and process all files
+# Reading and processing all files
 df_list <- lapply(years, process_file)
 
-# Combine all years into one dataset
+# Combining all data over the years into one data set
 traffic_df <- bind_rows(df_list) %>%
   group_by(state, year) %>%
   summarise(enplanements = sum(enplanements, na.rm = TRUE), .groups = "drop")
-
-# Display the transformed dataset
-print(traffic_df)
-
 ```
+<br>
 
+# Supplemental Data Import
 
 
 ```{r, warning = FALSE, message = FALSE}
+# Reading the data
 income_df <- read.csv("./Data/poverty_income/Income.csv", check.names = FALSE)
 regressors_df <- read.csv("./Data/Regressors.csv", check.names = FALSE)
 weather_df <- read.csv("./Data/Weather Data/combined_weather_data.csv", check.names = FALSE)
+
+# Binding all rows of clean covid data set list
+covid_df <- bind_rows(covid_data_list_clean)
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
+# Defining the directory path
+data_dir <- "./Data/Average State Precipitation"
 
-# Define the directory path
-data_dir <- "./Data/Average State Percipitation"
-
-# Get list of CSV files
+# Getting list of CSV files
 csv_files <- list.files(path = data_dir, pattern = "\\.csv$", full.names = TRUE)
 
-# Initialize empty list to store processed dataframes
+# Initializing empty list to store processed data frames
 df_list <- list()
 
-# Process each file
+# Processing each file
 for (file in csv_files) {
   
-  # Read CSV, skipping first 4 rows and without predefined headers
+  # Reading CSV, skipping first 4 rows and without predefined headers
   df <- read_csv(file, skip = 4, col_names = FALSE, col_types = cols(.default = "c"))
   
 
-  # Manually set column names
+  # Manually setting column names
   colnames(df) <- c("Year", "Value")
   
-  # Convert Year to character
+  # Converting Year to character
   df$Year <- as.character(df$Year)
   
-  # Extract Month (MM) from Year column (YYYYMM format)
+  # Extracting Month (MM) from Year column (YYYYMM format)
   df <- df %>%
     mutate(Month = substr(Year, 5, 6)) %>%
     relocate(Month, .after = Year)
   
-  # Keep only the YYYY part in the Year column
+  # Keeping only the YYYY part in the Year column
   df$Year <- substr(df$Year, 1, 4)
   
-  # Extract State name from file name
+  # Extracting State name from file name
   state_name <- tools::file_path_sans_ext(basename(file))
   
-  # Add State column at the first position
+  # Adding State column at the first position
   df <- df %>%
     mutate(State = state_name) %>%
     relocate(State, .before = Year)
   
-  # Store cleaned dataframe
+  # Storing cleaned data frame
   df_list[[length(df_list) + 1]] <- df
 }
-
-
 
 precip_m_df <- bind_rows(df_list)
-  
-# Print the cleaned dataframe head
-head(precip_m_df)
-
 ```
 
-```{r, warning = FALSE, message = FALSE}
 
-# Define the directory path
+
+
+```{r, warning = FALSE, message = FALSE}
+# Defining the directory path
 data_dir <- "./Data/Average State Temperatures"
 
-# Get list of CSV files
+# Getting list of CSV files
 csv_files <- list.files(path = data_dir, pattern = "\\.csv$", full.names = TRUE)
 
-# Initialize empty list to store processed dataframes
+# Initializing empty list to store processed data frames
 df_list <- list()
 
-# Process each file
+# Processing each file
 for (file in csv_files) {
   
-  # Read CSV, skipping first 4 rows and without predefined headers
+  # Reading CSV, skipping first 4 rows and without predefined headers
   df <- read_csv(file, skip = 4, col_names = FALSE, col_types = cols(.default = "c"))
-  
 
-  # Manually set column names
+  # Manually setting column names
   colnames(df) <- c("Year", "Value")
   
-  # Convert Year to character
+  # Converting Year to character
   df$Year <- as.character(df$Year)
   
-  # Extract Month (MM) from Year column (YYYYMM format)
+  # Extracting Month (MM) from Year column (YYYYMM format)
   df <- df %>%
     mutate(Month = substr(Year, 5, 6)) %>%
     relocate(Month, .after = Year)
   
-  # Keep only the YYYY part in the Year column
+  # Keeping only the YYYY part in the Year column
   df$Year <- substr(df$Year, 1, 4)
   
-  # Extract State name from file name
+  # Extracting State name from file name
   state_name <- tools::file_path_sans_ext(basename(file))
   
-  # Add State column at the first position
+  # Adding State column at the first position
   df <- df %>%
     mutate(State = state_name) %>%
     relocate(State, .before = Year)
   
-  # Store cleaned dataframe
+  # Storing cleaned data frame
   df_list[[length(df_list) + 1]] <- df
 }
 
-
-
 temp_m_df <- bind_rows(df_list)
-  
-# Print the cleaned dataframe head
-head(temp_m_df)
-
 ```
 
 
 
-```{r, warning = FALSE, message = FALSE}
-head(regressors_df)
-
-```
 
 ```{r, warning = FALSE, message = FALSE}
+# 
 covid_df <- as.data.frame(covid_df)
 population_df <- as.data.frame(population_df)
 population2_df <- as.data.frame(population2_df)
@@ -573,7 +539,6 @@ head(traffic_df)
 
 
 income_df <- income_df %>%
-#  rename("State" = names(income_df)[0], "Year" = names(income_df)[1]) %>%
   select("State" = names(income_df)[1], "Year" = names(income_df)[2], names(income_df)[3], names(income_df)[4])
 
 head(income_df)
@@ -590,29 +555,15 @@ precip_m_df <- precip_m_df %>%
   mutate(State = as.character(State),     # Convert numeric → integer
          Year = as.integer(Year),
          Month = as.integer(Month),
-         avg_percip_m = as.numeric(Value)) %>%
-  select(State, Year, Month, avg_percip_m)
-head(precip_m_df)
-
-
+         avg_precip_m = as.numeric(Value)) %>%
+  select(State, Year, Month, avg_precip_m)
 ```
 
 
 
 
 ```{r, warning = FALSE, message = FALSE}
-#sapply(covid_df,class)
-sapply(population_df,class) # year(2) char to int
-#sapply(weather_df,class)
-sapply(population2_df,class) # year(2) char to int
-#sapply(traffic_df,class)
-sapply(income_df,class) # poverty percent(3) & median income(4) from character to int
 
-
-```
-
-
-```{r, warning = FALSE, message = FALSE}
 population_df <- population_df %>%
   mutate(Year = as.integer(Year)     # Convert numeric → integer
          )
@@ -644,9 +595,8 @@ covid_df <- covid_df %>%
 # Check column types
 sapply(covid_df, class)
 
-
-
 ```
+
 
 
 ```{r, warning = FALSE, message = FALSE}
@@ -659,8 +609,9 @@ head(income_df)
 head(regressors_df)
 head(precip_m_df)
 head(temp_m_df)
-
 ```
+
+
 
 ```{r, warning = FALSE, message = FALSE}
 covid_df <- covid_df %>%
@@ -694,8 +645,6 @@ Data_df <- Descriptive_data_df %>%
   left_join(rolling_avg, by =c("State","Year"))
 
 head(Data_df)
-
-
 ```
 
 
@@ -713,7 +662,7 @@ str(Data_df)
 
 ```{r, warning = FALSE, message = FALSE}
 plot(Data_df$Date, Data_df$avg_precip, type = "l", col = "blue",
-     xlab = "Date", ylab = "Rain (In.)", main = "Percipitaion")
+     xlab = "Date", ylab = "Rain (In.)", main = "Precipitaion")
 
 plot(Data_df$Date, Data_df$avg_ws, type = "l", col = "blue",
      xlab = "Date", ylab = "Speed (kts.)", main = "Wind Speed")
@@ -733,47 +682,71 @@ plot(Data_df$Date, Data_df$Deaths, type = "l", col = "blue",
 plot(Data_df$Date, Data_df$Recovered, type = "l", col = "blue",
      xlab = "Date", ylab = "Recovered", main = "Recovered")
 
+plot(Data_df$Date, Data_df$avg_temp_m, type = "l", col = "blue",
+     xlab = "Date", ylab = "Temperature *C", main = "Average Monthly Temperature")
 
-
-
+plot(Data_df$Date, Data_df$avg_precip_m, type = "l", col = "blue",
+     xlab = "Date", ylab = "Rainfall In.", main = "Average Monthly Precipitation")
 
 
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
-acf(Data_df$avg_precip, main = "Autocorrelation Plot")
-acf(Data_df$avg_dp, main = "Autocorrelation Plot")
-acf(Data_df$avg_ws, main = "Autocorrelation Plot")
-acf(Data_df$avg_temp, main = "Autocorrelation Plot")
-acf(Data_df$Confirmed, main = "Autocorrelation Plot")
-acf(Data_df$Deaths, main = "Autocorrelation Plot")
-acf(Data_df$Recovered, main = "Autocorrelation Plot")
-
-
+acf(Data_df$avg_precip, main = "avg_Y_precip Autocorrelation Plot")
+acf(Data_df$avg_dp, main = "avg_dp Autocorrelation Plot")
+acf(Data_df$avg_ws, main = "avg_ws Autocorrelation Plot")
+acf(Data_df$avg_temp, main = "avg_Y_temp Autocorrelation Plot")
+acf(Data_df$Confirmed, main = "Confirmed Autocorrelation Plot")
+acf(Data_df$Deaths, main = "Deaths Autocorrelation Plot")
+acf(Data_df$Recovered, main = "Recovered Autocorrelation Plot")
+acf(Data_df$avg_precip_m, main = "avg_M_precip Autocorrelation Plot")
+acf(Data_df$avg_temp_m, main = "avg_M_temp Autocorrelation Plot")
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
 library(tseries)
-adf.test(Data_df$avg_temp)  # Check stationarity
+adf.test(Data_df$avg_temp_m)  # Check stationarity
+adf.test(Data_df$avg_precip_m)
 adf.test(Data_df$Confirmed)
 ```
 
 ## Correlation matrix
 ```{r, warning = FALSE, message = FALSE}
 cor_matrix <- cor(Data_df, method = "pearson") 
-
 ```
 
 
 ```{r, warning = FALSE, message = FALSE}
 plot(Data_df$Date, Data_df$avg_temp, type="l", col="blue", main="Temperature Over Time")
 plot(Data_df$Date, Data_df$Confirmed, type="l", col="red", main="COVID Cases Over Time")
+```
+
+```{r, warning = FALSE, message = FALSE}
+library(ggplot2)
+library(forecast)
+
+ts_data <- ts(Data_df$avg_temp_m, start=c(2020,1), frequency=12)
+stl_decomp <- stl(ts_data, s.window="periodic")
+
+autoplot(stl_decomp)
+```
+
+```{r, warning = FALSE, message = FALSE}
+ts_data <- ts(Data_df$avg_precip_m, start=c(2020,1), frequency=12)
+stl_decomp <- stl(ts_data, s.window="periodic")
+
+autoplot(stl_decomp)
+```
+
+```{r, warning = FALSE, message = FALSE}
 
 ```
 
+```{r, warning = FALSE, message = FALSE}
 
+```
 
 
 
@@ -783,51 +756,51 @@ plot(Data_df$Date, Data_df$Confirmed, type="l", col="red", main="COVID Cases Ove
 ## Variables List
 Median Household Income	Days_Until_Lockdown	Distance_To_Nearest_Epicenter	Airport_Presence	Beach_Presence	Number_Of_State_Parks
 
-READY $y_1$ *(Dependent Variable) = Daily Deaths Reported*
+$y_1$ *(Dependent Variable) = Daily Deaths Reported*
 
-READY $y_2$ *(Dependent Variable) = Daily Cases Reported*
+$y_2$ *(Dependent Variable) = Daily Cases Reported*
 
-READY $y_3$ *(Dependent Variable) = Daily Recovered Reported*
+$y_3$ *(Dependent Variable) = Daily Recovered Reported*
 
-READY $x_1$ *(Independent Variable) = Average Precipitation per Year*
+$x_1$ *(Independent Variable) = Average Precipitation per Year*
 
-READY $x_2$ *(Independent Variable) = Average Wind Speed per Year*
+$x_2$ *(Independent Variable) = Average Wind Speed per Year*
 
-READY $x_3$ *(Independent Variable) = Average Relative Humidity per Year*
+$x_3$ *(Independent Variable) = Average Relative Humidity per Year*
 
-READY $x_4$ *(Independent Variable) = Average Dew Point per Year*
+$x_4$ *(Independent Variable) = Average Dew Point per Year*
 
-READY $x_5$ *(Independent Variable) = Average Temperature per Year*
+$x_5$ *(Independent Variable) = Average Temperature per Year*
 
-READY $x_6$ *(Independent Variable) = Total Population per Year*
+$x_6$ *(Independent Variable) = Total Population per Year*
 
-READY $x_7$ *(Independent Variable) = Total Population Density (p/mi^2 | person per square mile) per Year*
+$x_7$ *(Independent Variable) = Total Population Density (p/mi^2 | person per square mile) per Year*
 
-READY $x_{8}$ *(Independent Variable) = Elder population 65 >= %*
+$x_{8}$ *(Independent Variable) = Elder population 65 >= %*
 
-READY $x_{9}$ *(Independent Variable) = Infant population 5 <= %*
+$x_{9}$ *(Independent Variable) = Infant population 5 <= %*
 
-READY $x_8$ *(Independent Variable) = Number of days between first US case and lock down/shelter-in-place order*
+$x_8$ *(Independent Variable) = Number of days between first US case and lock down/shelter-in-place order*
 
-READY $x_9$ *(Independent Variable) = Distance from capital to the closest of the 5 states with the first case*
+$x_9$ *(Independent Variable) = Distance from capital to the closest of the 5 states with the first case*
 
-READY $x_{10}$ *(Independent Variable) = If the state has an airport*
+$x_{10}$ *(Independent Variable) = If the state has an airport*
 
-READY $x_{15}$ *(Independent Variable) = If the state has a beach*
+$x_{15}$ *(Independent Variable) = If the state has a beach*
 
-READY $x_{16}$ *(Independent Variable) = Number of state parks*
+$x_{16}$ *(Independent Variable) = Number of state parks*
 
-READY $x_6$ *(Independent Variable) = State Expenditures for the Fiscal Year*
+$x_6$ *(Independent Variable) = State Expenditures for the Fiscal Year*
 
-READY $x_{17}$ *(Independent Variable) = Airport Traffic*
+$x_{17}$ *(Independent Variable) = Airport Traffic*
 
-READY $x_{20}$ *(Independent Variable) = Poverty percentage*
+$x_{20}$ *(Independent Variable) = Poverty percentage*
 
-READY $x_{21}$ *(Independent Variable) = Unemployment percentage*
+$x_{21}$ *(Independent Variable) = Unemployment percentage*
 
-READY $x_{22}$ *(Independent Variable) = Median household income*
+$x_{22}$ *(Independent Variable) = Median household income*
 
-READY $x_{23}$ *(Independent Variable) = deaths/cases*
+$x_{23}$ *(Independent Variable) = deaths/cases*
 
 
 # Sources
