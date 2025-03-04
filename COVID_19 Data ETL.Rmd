@@ -536,15 +536,15 @@ ggplot(df_classes, aes(x = DataFrame, y = Variable, fill = Class)) +
 First use **left_join** by `State`,`Year`, and `Month`, then we join the rest of the data together before joining to original set by `State` and `Year`.
 ```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
 # Left join using composite key (State + Year)
-#Data_df1 <- population_df %>%
-#  left_join(weather_df, by = c("State", "Year")) %>%
-#  left_join(population2_df, by = c("State", "Year")) %>%
-#  left_join(traffic_df, by = c("State", "Year")) %>%
-#  left_join(income_df, by = c("State", "Year")) %>%
-#  left_join(regressors_df, by = c("State", "Year"))
+Data_df1 <- population_df %>%
+  left_join(weather_df, by = c("State", "Year")) %>%
+  left_join(population2_df, by = c("State", "Year")) %>%
+  left_join(traffic_df, by = c("State", "Year")) %>%
+  left_join(income_df, by = c("State", "Year")) %>%
+  left_join(regressors_df, by = c("State", "Year"))
 
-#Data_df1 <- Data_df1 %>%
-#  select(State, Year, Month, everything())
+Data_df1 <- Data_df1 %>%
+  select(State, Year, Month, everything())
 
 rolling_avg <- covid_df %>%
   left_join(Data_df1, by = c("State", "Year","Month"))
@@ -555,7 +555,7 @@ rolling_avg <- covid_df %>%
 We rearrange the columns, grouping and bringing `State`, `Year`, and `Date` to the front and keeping `Confirmed`, `Deaths` and `Recovered` to the back.
 ```{r, echo = TRUE, warning = FALSE, message = FALSE}
 Data <- rolling_avg %>%
-  mutate(avg_ws_m = avg_m_avg_ws, avg_rh_m = avg_m_avg_rh, avg_temp_m = avg_m_avg_temp, avg_dp_m = avg_m_avg_dp, avg_precip_m = avg_m_avg_precip)
+  mutate(avg_ws_y = avg_m_avg_ws, avg_rh_y = avg_m_avg_rh, avg_temp_y = avg_m_avg_temp, avg_dp_y = avg_m_avg_dp, avg_precip_y = avg_m_avg_precip)
 
 Data <- Data %>%
   select(names(Data)[1:8], names(Data)[10:15], names(Data)[22:36])
@@ -597,11 +597,6 @@ plot(Data$Date, Data$Deaths, type = "l", col = "blue",
 plot(Data$Date, Data$Recovered, type = "l", col = "blue",
      xlab = "Date", ylab = "Recovered", main = "Recovered")
 
-plot(Data$Date, Data$avg_temp_m, type = "l", col = "blue",
-     xlab = "Date", ylab = "Temperature *C", main = "Average Monthly Temperature")
-
-plot(Data$Date, Data$avg_precip_m, type = "l", col = "blue",
-     xlab = "Date", ylab = "Rainfall In.", main = "Average Monthly Precipitation")
 ```
 
 ```{r warning = FALSE, message = FALSE, fig.cap="Fig. 4",echo=FALSE}
@@ -628,7 +623,7 @@ df_long_all <- pivot_longer(df_filtered, cols = everything(), names_to = "Variab
 # Define groups based on the provided list
 variable_groups <- list(
   group_2 = c("avg_ws", "avg_rh", "avg_temp", "avg_dp", "avg_precip"),
-  group_3 = c("avg_ws_m","avg_rh_m", "avg_temp_m", "avg_dp_m","avg_precip_m"),
+  group_3 = c("avg_ws_y","avg_rh_y", "avg_temp_y", "avg_dp_y","avg_precip_y"),
   group_5 = c("Airport_Presence", "Beach_Presence"),
   group_7 = c("Confirmed"),
   group_8 = c("Deaths"),
@@ -648,8 +643,8 @@ variable_groups <- list(
   group_23 = c("Airport_Presence"),
   group_24 = c("Beach_Presence"),
   group_25 = c("Number_Of_State_Parks"),
-  group_26 = c("avg_temp_m"),
-  group_27 = c("avg_precip_m")
+  group_26 = c("avg_temp_y"),
+  group_27 = c("avg_precip_y")
 )
 
 create_violin_plot <- function(var_list, title) {
@@ -708,57 +703,229 @@ par(mfrow = c(1,1))  # Reset plotting layout
 ```{r, warning = FALSE, message = FALSE}
 # Define variable pairs to check for cross-correlation
 ccf_pairs <- list(
-  c("Confirmed", "avg_temp_m"),
-  c("Confirmed", "avg_precip_m"),
-  c("Confirmed", "avg_temp_m"),
-  c("Confirmed", "avg_temp_m"),
-  c("Confirmed", "avg_temp_m"),
-  c("Confirmed", "avg_temp_m"),
-  c("Confirmed", "avg_temp_m"),
-  c("Confirmed", "avg_temp_m"),
-  c("Deaths", "avg_temp_m"),
-  c("Deaths", "avg_temp_m"),
-  c("Deaths", "avg_temp_m"),
-  c("Deaths", "avg_temp_m"),
-  c("Deaths", "avg_temp_m"),
-  c("Deaths", "avg_precip_m")
+  c("Confirmed", "avg_temp"),
+  c("Confirmed", "avg_precip"),
+  c("Confirmed", "avg_ws"),
+  c("Confirmed", "avg_dp"),
+  c("Confirmed", "avg_rh"),
+  c("Confirmed", "enplanements"),
+  c("Deaths", "avg_temp"),
+  c("Deaths", "avg_precip"),
+  c("Deaths", "avg_ws"),
+  c("Deaths", "avg_dp"),
+  c("Deaths", "avg_rh"),
+  c("Deaths", "enplanements"),
+  c("Confirmed", "avg_temp_y"),
+  c("Confirmed", "avg_precip_y"),
+  c("Confirmed", "avg_ws_y"),
+  c("Confirmed", "avg_dp_y"),
+  c("Confirmed", "avg_rh_y"),
+  c("Deaths", "avg_temp_y"),
+  c("Deaths", "avg_precip_y"),
+  c("Deaths", "avg_ws_y"),
+  c("Deaths", "avg_dp_y"),
+  c("Deaths", "avg_rh_y")
 )
-
 # Loop through each pair and plot CCF
 par(mfrow = c(2,2))  # Set up 2x2 plot layout
 
 for (pair in ccf_pairs) {
-  ccf(numeric_data[[pair[1]]], numeric_data[[pair[2]]], lag.max = 30, 
+  ccf(numeric_data[[pair[1]]], numeric_data[[pair[2]]], lag.max = 90, 
       main = paste("CCF:", pair[1], "vs.", pair[2]), ylab = "Correlation")
 }
-
 par(mfrow = c(1,1))  # Reset plot layout
 ```
 
 ```{r, warning = FALSE, message = FALSE}
+install.packages("mgcv")
+library(mgcv)
+
+# Fit a GAM model to see nonlinear relationships
+gam_model <- gam(Confirmed ~ s(avg_temp) + s(avg_rh), data = Data)
+
+# Check significance of nonlinear effects
+summary(gam_model)
+
+# Visualize the smooth functions
+plot(gam_model, pages = 1)
 
 
 ```
 
 ```{r, warning = FALSE, message = FALSE}
-colnames(Data)
+lm_model <- lm(Confirmed ~ avg_temp + avg_rh + enplanements, data = Data)
+summary(lm_model)
 ```
 
 ```{r, warning = FALSE, message = FALSE}
+library(forecast)
+
+# Convert Confirmed Cases into a time series object
+ts_confirmed <- ts(Data$Confirmed, start = c(2020, 1), frequency = 12)  # Monthly
+
+# Decompose time series
+decomposed <- decompose(ts_confirmed, type = "multiplicative")
+
+# Plot decomposition
+autoplot(decomposed)
+```
+
+```{r, warning = FALSE, message = FALSE}
+# Histogram for temperature
+ggplot(Data, aes(x = avg_temp)) +
+  geom_histogram(binwidth = 2, fill = "blue", color = "black", alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of Temperature", x = "Temperature (°C)", y = "Count")
+
+# Histogram for humidity
+ggplot(Data, aes(x = avg_rh)) +
+  geom_histogram(binwidth = 5, fill = "red", color = "black", alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of Relative Humidity", x = "Humidity (%)", y = "Count")
+```
+
+```{r, warning = FALSE, message = FALSE}
+# Fit a new GAM model with an interaction term
+gam_model_interaction <- gam(Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh), data = Data)
+
+# Print model summary
+summary(gam_model_interaction)
+
+# Plot smooth functions including interaction
+plot(gam_model_interaction, pages = 1, shade = TRUE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+AIC(gam_model, gam_model_interaction)
+```
+
+```{r, warning = FALSE, message = FALSE}
+#suppressMessages(suppressWarnings(install.packages("visreg",type="binary")))
+library(visreg)
+
+# 3D Surface Plot for Interaction Effect
+visreg2d(gam_model_interaction, "avg_temp", "avg_rh", plot.type = "persp", cond = list())
 
 ```
 
 ```{r, warning = FALSE, message = FALSE}
+# Fit an enhanced GAM model with mobility and policy effects
+gam_model_mobility <- gam(
+  Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh) + 
+               s(enplanements) + s(Days_Until_Lockdown) + s(Poverty_Percent),
+  data = Data
+)
+
+# Print summary of new model
+summary(gam_model_mobility)
+```
+
+```{r, warning = FALSE, message = FALSE}
+AIC(gam_model_interaction, gam_model_mobility)
+```
+
+```{r, warning = FALSE, message = FALSE}
+par(mfrow = c(1,2))  # Arrange plots in 1 row, 2 columns
+
+plot(gam_model_mobility, select = 4, shade = TRUE, main = "Effect of Air Travel on COVID Cases")
+plot(gam_model_mobility, select = 5, shade = TRUE, main = "Effect of Lockdowns on COVID Cases")
 
 ```
 
 ```{r, warning = FALSE, message = FALSE}
+# Predict next 30 days of COVID cases
+forecast_cases <- predict(gam_model_mobility, newdata = Data, type = "response")
+
+# Compare actual vs. predicted cases
+Data$predicted_cases <- forecast_cases
+
+ggplot(Data, aes(x = Confirmed, y = predicted_cases)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  labs(title = "Actual vs. Predicted COVID Cases (with Mobility & Policy)", x = "Actual Cases", y = "Predicted Cases")
 
 ```
 
 ```{r, warning = FALSE, message = FALSE}
+Data$log_Confirmed <- log1p(Data$Confirmed)  # log(1 + x) prevents log(0) issues
+
+gam_model_log <- gam(
+  log_Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh) + 
+                  s(enplanements) + s(Days_Until_Lockdown) + s(Poverty_Percent),
+  data = Data
+)
+
+# Predict with log model and back-transform
+Data$predicted_log_cases <- exp(predict(gam_model_log, newdata = Data)) - 1
+
+# Plot again
+ggplot(Data, aes(x = Confirmed, y = predicted_log_cases)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  labs(title = "Log-Transformed Model: Actual vs. Predicted Cases", x = "Actual Cases", y = "Predicted Cases")
 
 ```
+
+```{r, warning = FALSE, message = FALSE}
+gam_model_mobility2 <- gam(
+  Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh) + 
+               s(enplanements) + s(Days_Until_Lockdown) + ti(enplanements, Days_Until_Lockdown),
+  data = Data
+)
+
+
+AIC(gam_model_mobility2, gam_model_mobility)
+```
+```{r}
+install.packages("caret")
+library(caret)
+varImp(gam_model_mobility2)
+```
+
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+
 
 
 
