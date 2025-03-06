@@ -599,6 +599,23 @@ plot(Data$Date, Data$Recovered, type = "l", col = "blue",
 
 ```
 
+
+```{r}
+
+#dev.off()  # This resets the current plotting device
+# Adjust margins (bottom, left, top, right)
+#par(mar = c(4, 4, 2, 1))
+
+# Set up a plotting area (adjust grid dimensions as needed)
+#par(mfrow = c(ceiling(ncol(numeric_data)/4), 4))  # 4 plots per row
+
+# Loop through each numeric variable and plot its ACF
+for(i in 1:ncol(numeric_data)) {
+  acf(numeric_data[, i], main = paste("ACF of", colnames(numeric_data)[i]),lag.max = 365)
+}
+```
+
+
 ```{r warning = FALSE, message = FALSE, fig.cap="Fig. 4",echo=FALSE}
 library(corrplot)
 
@@ -879,19 +896,28 @@ gam_model_mobility2 <- gam(
 AIC(gam_model_mobility2, gam_model_mobility)
 ```
 ```{r}
-install.packages("caret")
+#install.packages("caret")
 library(caret)
 varImp(gam_model_mobility2)
 ```
 
 
 ```{r}
-
+library(MASS)
+glm_model <- glm.nb(Confirmed ~ avg_temp + avg_rh + enplanements + Days_Until_Lockdown, data = Data)
+summary(glm_model)
 
 ```
 
 ```{r}
+install.packages("xgboost")
+library(xgboost)
 
+# Convert data for XGBoost
+X <- model.matrix(Confirmed ~ avg_temp + avg_rh + enplanements + Days_Until_Lockdown, data = Data)[, -1]
+y <- Data$Confirmed
+
+xgb_model <- xgboost(data = X, label = y, nrounds = 100, objective = "reg:squarederror")
 
 ```
 
