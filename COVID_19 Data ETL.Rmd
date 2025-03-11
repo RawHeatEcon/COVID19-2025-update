@@ -62,6 +62,13 @@ library(gitcreds)
 library(usethis)    
 suppressMessages(suppressWarnings(install.packages("httr2",type="binary")))
 library(httr2)
+library(corrplot)
+library(MASS)
+library(caret)
+library(visreg)
+library(forecast)
+library(mgcv)
+library(xgboost)
 
 ```
 
@@ -243,7 +250,13 @@ if (all_have_50_rows) {
 # Weather Data Transformations
 
 A portion of our weather data is saved in 4 folders separated by year, and labeled by state in each respective folder in the working directory. We process each file by creating a new column for the state, specifying the year column, removing granular data and calculating averages in order to smooth some statistics. We make sure the data has a `State` and `Year` column, as these will serve as join keys when combining our multiple data sets.
+```{r}
+getAnywhere(select)
+```
+
 ```{r, echo = TRUE, eval= FALSE, results = "hide", warning = FALSE, message = FALSE}
+detach("package:MASS", unload = TRUE)
+library(dplyr)
 # Defining the main data directory
 main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Weather Data"
 
@@ -362,8 +375,8 @@ population2_df <- df_long %>%
   rename(pop_infant = `Infant percentage`, pop_elder = `elder percentage`)  # Use exact column names
 
 # Selecting only required columns
-population2_df <- df_final %>%
-  select(state, year, pop_infant, pop_elder)
+#population2_df <- df_final %>%
+#  select(state, year, pop_infant, pop_elder)
 ```
 <br>
 
@@ -507,8 +520,6 @@ dfs <- list(
   weather_df = weather_df,
   traffic_df = traffic_df,
   regressors_df = regressors_df
-#  precip_m_df = precip_m_df,
-#  temp_m_df = temp_m_df
 )
 
 # Creating a structured table
@@ -560,7 +571,7 @@ Data <- rolling_avg %>%
 Data <- Data %>%
   select(names(Data)[1:8], names(Data)[10:15], names(Data)[22:36])
 
-main <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data"
+#main <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data"
 # Saving final combined data set to cut down on computing time
 #write_csv(Data, file.path(main, "Data.csv"))
 ```
@@ -600,25 +611,10 @@ plot(Data$Date, Data$Recovered, type = "l", col = "blue",
 ```
 
 
-```{r}
 
-#dev.off()  # This resets the current plotting device
-# Adjust margins (bottom, left, top, right)
-#par(mar = c(4, 4, 2, 1))
-
-# Set up a plotting area (adjust grid dimensions as needed)
-#par(mfrow = c(ceiling(ncol(numeric_data)/4), 4))  # 4 plots per row
-
-# Loop through each numeric variable and plot its ACF
-for(i in 1:ncol(numeric_data)) {
-  acf(numeric_data[, i], main = paste("ACF of", colnames(numeric_data)[i]),lag.max = 365)
-}
-```
 
 
 ```{r warning = FALSE, message = FALSE, fig.cap="Fig. 4",echo=FALSE}
-library(corrplot)
-
 Data_num <- Data[, sapply(Data, is.numeric)]
 data_cor <- cor(Data_num)
 
@@ -753,10 +749,29 @@ for (pair in ccf_pairs) {
 par(mfrow = c(1,1))  # Reset plot layout
 ```
 
-```{r, warning = FALSE, message = FALSE}
-install.packages("mgcv")
-library(mgcv)
 
+```{r}
+#dev.off()  # This resets the current plotting device
+
+# Loop through each numeric variable and plot its ACF
+for(i in 1:ncol(numeric_data)) {
+  acf(numeric_data[, i], main = paste("ACF of", colnames(numeric_data)[i]),lag.max = 365)
+}
+```
+
+```{r}
+Data$log_Confirmed <- log1p(Data$Confirmed)
+Data$log_Deaths <- log1p(Data$Deaths)
+Data$log_pop_d <- log1p(Data$pop_d)
+Data$log_avg_precip <- log1p(Data$avg_precip)
+Data$log_enplanements <- log1p(Data$enplanements)
+
+```
+
+
+
+
+```{r, warning = FALSE, message = FALSE}
 # Fit a GAM model to see nonlinear relationships
 gam_model <- gam(Confirmed ~ s(avg_temp) + s(avg_rh), data = Data)
 
@@ -775,8 +790,6 @@ summary(lm_model)
 ```
 
 ```{r, warning = FALSE, message = FALSE}
-library(forecast)
-
 # Convert Confirmed Cases into a time series object
 ts_confirmed <- ts(Data$Confirmed, start = c(2020, 1), frequency = 12)  # Monthly
 
@@ -818,7 +831,6 @@ AIC(gam_model, gam_model_interaction)
 
 ```{r, warning = FALSE, message = FALSE}
 #suppressMessages(suppressWarnings(install.packages("visreg",type="binary")))
-library(visreg)
 
 # 3D Surface Plot for Interaction Effect
 visreg2d(gam_model_interaction, "avg_temp", "avg_rh", plot.type = "persp", cond = list())
@@ -897,7 +909,7 @@ AIC(gam_model_mobility2, gam_model_mobility)
 ```
 ```{r}
 #install.packages("caret")
-library(caret)
+
 varImp(gam_model_mobility2)
 ```
 
@@ -910,15 +922,40 @@ summary(glm_model)
 ```
 
 ```{r}
-install.packages("xgboost")
-library(xgboost)
-
 # Convert data for XGBoost
 X <- model.matrix(Confirmed ~ avg_temp + avg_rh + enplanements + Days_Until_Lockdown, data = Data)[, -1]
 y <- Data$Confirmed
 
 xgb_model <- xgboost(data = X, label = y, nrounds = 100, objective = "reg:squarederror")
 
+```
+
+
+```{r}
+library(dplyr)
+Data_2 <- Data  %>%
+  rename("y1" = Confirmed, "y2" = Deaths, "y3" = log_Confirmed, "x1" = pop_d, "x2"= avg_precip, "x3" = avg_ws, "x4" = avg_rh, "x5" = avg_temp, "x6" = avg_dp, "x7" = pop_infant, "x8" = pop_elder, "x9" = enplanements, "x10" = Poverty_Percent, "x11" = Median_Household_Income, "x12" = Days_Until_Lockdown, "x13" = Distance_To_Nearest_Epicenter, "x14" = Airport_Presence, "x15" = Beach_Presence, "x16" = Number_Of_State_Parks, "x17" = avg_ws_y, "x18" = avg_rh_y, "x19" = avg_temp_y, "x20" = avg_dp_y, "x21" = avg_precip_y, "x22" = predicted_cases, "x23" = predicted_log_cases, "x24" = log_pop_d, "x25" = log_Deaths, "x26" = log_avg_precip, "x27" = log_enplanements)
+
+Data_3 <- Data_2 %>%
+  select(State, y1, y2, y3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25, x26, x27)
+```
+
+
+
+```{r}
+summary(Data_3)
+
+```
+
+
+```{r}
+model1 <- lm(y1~x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 + x11 + x12 + x13 + x14 + x15 + x16 + x17 + x18 + x19 + x20 + x21 + x22 + x23 + x24 + x25 + x26 + x27, Data_3)
+
+```
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+vif(model1)
 ```
 
 ```{r}
