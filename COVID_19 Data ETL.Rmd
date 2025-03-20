@@ -21,14 +21,14 @@ toc-title: Table of Contents
 
 ## Background
 
-The new decade has begun with a very rocky start with the US and Iran almost at the brink of war, the Russian-Ukrainian war, Australian Bush fires, East African Locust swarms, earthquakes, devastating floods upon other things, but the COVID-19 Pandemic has slowly descending upon humanity as the deadliest event yet. In the following analysis, I make sense of how the daily deaths due to COVID-19 compares to the individual states' quickness of lock down, population size by state, and distance of case from the first 5 cases in the USA amongst other variables.
+The new decade has begun with a very rocky start with the US and Iran almost at the brink of war, the Russian-Ukrainian war, Australian Bush fires, East African Locust swarms, earthquakes, devastating floods upon other things, but the COVID-19 Pandemic had slowly descended upon humanity as the deadliest event yet. In the following analysis, I make sense of how the daily deaths due to COVID-19 compares to the individual states' quickness of lock down, population size by state, and distance of case from the first 5 cases in the USA amongst other variables.
 
 
 # Data Acquisition
 
 In order to help aid in predicting the spread of this virus and just analyzing the previous path of the virus I will be using data collected by the John Hopkins Center for Systems Science and Engineering.
 The data is being further sourced from WHO, CDC, ECDC, NHC, DXY, 1point3acres, Worldometers.info, BNO, the COVID Tracking Project (testing and hospitalizations), state and national government health departments, and local media reports.
-The data set was found on [Kaggle](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series). Alongside this data set, a new data set was created by compiling numerous statistics specific to each US state. These statistics were curated via multiple government websites, after thorough research into possible connections between the US states and the spread of Covid-19. First we will look at the basic summary statistics to show light on the general picture of what we are working with and then moving on to more robust analysis via regression analysis. We will then use forecasting to predict the future of this pandemic. 
+The data set was found on [Kaggle](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series) with parent repository located on GitHub. Alongside this data set, a new data set was created by compiling numerous statistics specific to each US state. These statistics were curated via multiple government websites, after thorough research into possible connections between the US states and the spread of Covid-19. First we will look at the basic summary statistics to show light on the general picture of what we are working with and then moving on to more robust analysis via regression analysis. We will then use forecasting to predict the future of this pandemic. 
 
 This pandemic is one of the most important events happening right now and the way we react and approach it will affect our lives forever. Understanding it bit by bit will at least somewhat help us in making the decisions to combat COVID-19, which is very important to our survival on this planet.
 
@@ -39,10 +39,8 @@ This pandemic is one of the most important events happening right now and the wa
 ## Libraries
 
 The following libraries were used in the analysis:
-*tidyverse, lubridate, broom, oslrr, car, mctest, MPV, cvTools, gh, gitcreds, usethis, httr, httr2(binary)*
 ```{r setup, echo = TRUE, warning = FALSE, message = FALSE, results = "hide"}
 
-knitr::opts_chunk$set(echo = TRUE)
 require("knitr")
 # Setting working directory for the project
 opts_knit$set(root.dir = "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project")
@@ -95,7 +93,6 @@ usethis::edit_r_environ()  # Adding token manually to .Renviron
 readRenviron("~/.Renviron") # Reloading the environment
 Sys.getenv("GITHUB_PAT") # Making sure it is set
 
-
 #Testing Connection
 usethis::gh_token_help()
 response <- GET("https://api.github.com/user", authenticate("RawHeatEcon", Sys.getenv("GITHUB_PAT")))
@@ -116,7 +113,7 @@ Sys.setenv(GITHUB_PAT = gitcreds_get()$password)
 ### COVID data
 
 Downloading and cleaning the COVID-19 data sets from GitHub provided by John Hopkins University. We download all files and save them into a list, staging for processing.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = FALSE}
 # GitHub repository details
 repo <- "CSSEGISandData/COVID-19"
 path <- "csse_covid_19_data/csse_covid_19_daily_reports_us"
@@ -154,13 +151,17 @@ for (file in csv_files) {
 ```
 ***Here we encountered a problem since the original GitHub repository directory has been truncated to 1,000 files, omitting 63 files. For this analysis, we will only use data from these 1,000 files.***
 
+
+
 <br>
 
 
 # Standardizing Data and Combining All Datasets
 
 Upon further investigation, we need to rid the data frame of unnecessary observations and irrelevant variables. The original data included observations from *American Samoa*, *Diamond Princess*, *Grand Princess*, *Guam*, *Northern Mariana Islands*, *Puerto Rico*, *Virgin Islands* and *District of Columbia* **(the cruise ships which originally brought the virus to the west)**, which we are not interested in. We are only interested in the 50 United States of America. Several variables in the dataset were reviewed and determined to be unsuitable for our analysis, such as **"FIPS"**, **"Total_Test_Results"**, **"People_Hospitalized"**, **"Case_Fatality_Ratio"**, **"UID"**, **"ISO3"**, **"Testing_Rate"**, **"Hospitalization_Rate"**, **"People_Tested"**, **"Mortality_Rate"**, **"Date"**, **"Incident_Rate"**. Further, we address missing values in the active cases and recovered cases columns, adding appropriate values based on the data.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = FALSE, eval = FALSE}
+detach("package:MASS", unload = TRUE)
+library(dplyr)
 # Defining the banned strings and pattern for row removal
 ban_list <- c("American Samoa", "Diamond Princess", "Grand Princess", "Guam", 
               "Northern Mariana Islands", "Puerto Rico", "Virgin Islands",
@@ -217,12 +218,23 @@ covid_data_list_clean <- lapply(covid_data_list, function(df) {
 ```
 
 <br>
+Daily Covid Dataset Before:
+```{r, echo=FALSE}
+example_1 <- read.csv("C:/Users/William Roche/Downloads/School/MSDA/13 STAT 6382/P2/Data/COVID-19-master/COVID-19-master/csse_covid_19_data/csse_covid_19_daily_reports_us/03-06-2022.csv", check.names = FALSE)
+head(example_1,5)
+```
+
+Daily Covid Dataset After:
+```{r, echo=FALSE}
+example_1_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/covid_df.csv", check.names = FALSE)
+head(example_1_5,5)
+```
 
 
 ## Verifying Data Standardization Before Merging
 
 After processing the vast quantity of files, we make sure each file consists of 50 rows of data, corresponding to the 50 states in the US, and that they don't include erroneous columns, or extra unnecessary data.
-```{r, echo = TRUE, warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = FALSE}
 # Checking if all CSVs have the same column names:
 # Getting the column names from the first CSV
 first_names <- names(covid_data_list_clean[[1]])
@@ -246,15 +258,21 @@ if (all_have_50_rows) {
 }
 ```
 
+<br>
+
+#Combining Data
+
+We combine all daily Covid data recods into a single data set ordered by State and Date.
+```{r,echo= TRUE, eval=FALSE}
+# Binding all rows of clean covid data set list
+covid_df <- bind_rows(covid_data_list_clean)
+write_csv(covid_df, file.path(main_dir, "covid_df.csv"))
+```
 
 # Weather Data Transformations
 
 A portion of our weather data is saved in 4 folders separated by year, and labeled by state in each respective folder in the working directory. We process each file by creating a new column for the state, specifying the year column, removing granular data and calculating averages in order to smooth some statistics. We make sure the data has a `State` and `Year` column, as these will serve as join keys when combining our multiple data sets.
-```{r}
-getAnywhere(select)
-```
-
-```{r, echo = TRUE, eval= FALSE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = FALSE}
 detach("package:MASS", unload = TRUE)
 library(dplyr)
 # Defining the main data directory
@@ -331,31 +349,61 @@ all_data <- map_dfr(year_folders, function(year) {
   map_dfr(csv_files, function(file) process_weather_file(file, year))
 })
 # Saving final combined data set to cut down on computing time
-#write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
+write_csv(all_data, file.path(main_dir, "combined_weather_data.csv"))
 ```
+
+Weather Dataset Before:
+```{r, echo=FALSE}
+example_2 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Weather Data/2020/Alabama.csv", check.names = FALSE)
+head(example_2,5)
+```
+
+Weather Dataset After:
+```{r, echo=FALSE}
+example_2_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Weather Data/combined_weather_data.csv", check.names = FALSE)
+head(example_2_5,5)
+```
+
+
 
 <br>
 
 # Population Data Transformations
 
 We reshape data from wide format to long, keeping the state and area columns the same, and pivoting `2020`, `2021`, `2022`, `2023` with new column name year. We ensure to include`State` and `Year` columns.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = FALSE}
 # Reading the data
 df <- read.csv("./Data/Population.csv")
+main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data"
 
 # Reshaping data from wide to long format for years
 population_df <- df %>%
   pivot_longer(cols = 2:5, names_to = "year", values_to = "pop_d") %>%
   mutate(year = sub("^X", "", year))  
 # Removing "X" from year values (common when reading year column in csv files, R is reading s a string instead of integer)
+write_csv(population_df, file.path(main_dir, "population_df.csv"))
 ```
+
+Population Dataset Before:
+```{r, echo=FALSE}
+example_3 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Population.csv", check.names = FALSE)
+head(example_3,5)
+```
+
+Population Dataset After:
+```{r, echo=FALSE}
+example_3_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/population_df.csv", check.names = FALSE)
+head(example_3_5,5)
+```
+
 
 # Population Age Statistics Data Transformations
 
 From the age statistics by population data, we reshape data from wide format to long, keeping the state column the same, and pivoting `2020`, `2021`, `2022`, `2023` with new column name year, and age percentage columns. We ensure to include`State` and `Year` columns.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = FALSE}
 # Reading the data
 df <- read.csv("./Data/infant_elder_avg_age.csv", check.names = FALSE)
+main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data"
 
 # Renaming columns
 df <- df %>%
@@ -374,20 +422,29 @@ population2_df <- df_long %>%
   pivot_wider(names_from = AGE, values_from = population) %>%
   rename(pop_infant = `Infant percentage`, pop_elder = `elder percentage`)  # Use exact column names
 
-# Selecting only required columns
-#population2_df <- df_final %>%
-#  select(state, year, pop_infant, pop_elder)
+write_csv(population2_df, file.path(main_dir, "population2_df.csv"))
 ```
 <br>
 
+Population Age Statistics Dataset Before:
+```{r, echo=FALSE}
+example_4 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/infant_elder_avg_age.csv", check.names = FALSE)
+head(example_4,5)
+```
+
+Population Age Statistics Dataset After:
+```{r, echo=FALSE}
+example_4_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/population2_df.csv", check.names = FALSE)
+head(example_4_5,5)
+```
 
 # Airport Traffic Data Transformations
 
 The airport traffic data, or enplanements per state from 2020-2023 is separated into 4 files corresponding to each respective year. We change the state abbreviation back to the full state name in order to ensure `State` column is consistent across all data frames. The enplanement data has been recorded from multiple states, each with multiple airports, so we group the data by state and aggregate it accordingly.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = FALSE}
 # Defining the path to the data folder
 data_path <- "./Data/airport_traffic"
-
+main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data"
 # Listing years corresponding to the files
 years <- 2020:2023
 
@@ -413,8 +470,21 @@ df_list <- lapply(years, process_file)
 traffic_df <- bind_rows(df_list) %>%
   group_by(state, year) %>%
   summarise(enplanements = sum(enplanements, na.rm = TRUE), .groups = "drop")
+write_csv(traffic_df, file.path(main_dir, "traffic_df.csv"))
 ```
 <br>
+
+Airport Traffic Dataset Before:
+```{r, echo=FALSE}
+example_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/airport_traffic/2020.csv", check.names = FALSE)
+head(example_5,5)
+```
+
+Airport Traffic Dataset After:
+```{r, echo=FALSE}
+example_5_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/traffic_df.csv", check.names = FALSE)
+head(example_5_5,5)
+```
 
 # Additional Weather Data Import
 
@@ -425,22 +495,36 @@ Average state precipitation data and temperature data are already separated by `
 # Supplemental Data Import
 
 Importing a few more relative data sets that may help support our hypothesis/analysis.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = TRUE}
 # Reading the data
+main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data"
 income_df <- read.csv("./Data/poverty_income/Income.csv", check.names = FALSE)
 regressors_df <- read.csv("./Data/Regressors.csv", check.names = FALSE)
 weather_df <- read.csv("./Data/Weather Data/combined_weather_data.csv", check.names = FALSE)
-
-# Binding all rows of clean covid data set list
-covid_df <- bind_rows(covid_data_list_clean)
+population_df <- read.csv("./Data/population_df.csv", check.names = FALSE)
+population2_df <- read.csv("./Data/population2_df.csv", check.names = FALSE)
+traffic_df <- read.csv("./Data/traffic_df.csv", check.names = FALSE)
+covid_df <- read.csv("./Data/covid_df.csv", check.names = FALSE)
 ```
 
 <br>
 
+Income Dataset:
+```{r, echo=FALSE}
+example_6 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Income.csv", check.names = FALSE)
+head(example_6,5)
+```
+
+Additional egressors Dataset:
+```{r, echo=FALSE}
+example_6_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Regressors.csv", check.names = FALSE)
+head(example_6_5,5)
+```
+
 # Data Wrangling
 
 We ensure that all data sets are in `data.frame` format rather than `data.table` or any other mixed structures.
-```{r, echo = TRUE, warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = TRUE}
 # Converting data tables to data frames
 covid_df <- as.data.frame(covid_df)
 population_df <- as.data.frame(population_df)
@@ -450,6 +534,7 @@ traffic_df <- as.data.frame(traffic_df)
 # Making sure all data are in data.frame format
 objects <- list(covid_df = covid_df, population_df = population_df, population2_df = population2_df, traffic_df = traffic_df, weather_df = weather_df, income_df = income_df, regressors_df = regressors_df)
 sapply(objects, is.data.frame)
+#getAnywhere(select)
 ```
 
 <br>
@@ -457,7 +542,9 @@ sapply(objects, is.data.frame)
 
 
 Verifying that columns align properly, and remove any extraneous data to prepare them for consolidation. When necessary, we also address any inconsistencies to streamline the process.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = TRUE}
+detach("package:MASS", unload = TRUE)
+library(dplyr)
 # Renaming and making sure case is constant throughout all data sets for join keys
 # Decomposing Date into Year and Month
 # Reordering columns as needed
@@ -545,7 +632,7 @@ ggplot(df_classes, aes(x = DataFrame, y = Variable, fill = Class)) +
 # Left Join
 
 First use **left_join** by `State`,`Year`, and `Month`, then we join the rest of the data together before joining to original set by `State` and `Year`.
-```{r, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = TRUE}
 # Left join using composite key (State + Year)
 Data_df1 <- population_df %>%
   left_join(weather_df, by = c("State", "Year")) %>%
@@ -564,7 +651,7 @@ rolling_avg <- covid_df %>%
 
 # Rearrange
 We rearrange the columns, grouping and bringing `State`, `Year`, and `Date` to the front and keeping `Confirmed`, `Deaths` and `Recovered` to the back.
-```{r, echo = TRUE, warning = FALSE, message = FALSE}
+```{r, echo = TRUE, eval = TRUE}
 Data <- rolling_avg %>%
   mutate(avg_ws_y = avg_m_avg_ws, avg_rh_y = avg_m_avg_rh, avg_temp_y = avg_m_avg_temp, avg_dp_y = avg_m_avg_dp, avg_precip_y = avg_m_avg_precip)
 
@@ -577,7 +664,7 @@ Data <- Data %>%
 ```
 
 # Checking for `NULL` values.
-```{r, echo = TRUE, warning = FALSE, message = FALSE,}
+```{r, echo = TRUE, eval = FALSE}
 sum(is.na(Data))
 ```
 <br>
@@ -621,7 +708,9 @@ data_cor <- cor(Data_num)
 corrplot(data_cor, method = "circle", tl.cex = 0.6, 
          order = "hclust", number.cex = 0.7, diag = FALSE)
 ```
-
+```{r}
+str(Data)
+```
 
 *Violin plots*
 ```{r}
@@ -685,14 +774,16 @@ for (p in violin_plots) {
 ## Correlation matrix
 
 ```{r}
+#detach("package:MASS", unload = TRUE)
+library(dplyr)
 # Convert 'Year' to factor and encode 'Month' cyclically
-Data <- Data %>%
+Dat <- Data %>%
   mutate(Year = as.factor(Year),  # Convert Year to factor
          Month_sin = sin(2 * pi * Month / 12), 
          Month_cos = cos(2 * pi * Month / 12)) %>%
   select(-Year, -Month)  # Remove raw Year & Month
 # Keep only numeric columns and exclude Lat & Long_
-numeric_data <- Data %>%
+numeric_data <- Dat %>%
   select(where(is.numeric)) %>%
   select(-Lat, -Long_)  # Explicitly remove Lat and Long_
 
@@ -712,41 +803,12 @@ par(mfrow = c(1,1))  # Reset plotting layout
 ```
 
 
-
-```{r, warning = FALSE, message = FALSE}
-# Define variable pairs to check for cross-correlation
-ccf_pairs <- list(
-  c("Confirmed", "avg_temp"),
-  c("Confirmed", "avg_precip"),
-  c("Confirmed", "avg_ws"),
-  c("Confirmed", "avg_dp"),
-  c("Confirmed", "avg_rh"),
-  c("Confirmed", "enplanements"),
-  c("Deaths", "avg_temp"),
-  c("Deaths", "avg_precip"),
-  c("Deaths", "avg_ws"),
-  c("Deaths", "avg_dp"),
-  c("Deaths", "avg_rh"),
-  c("Deaths", "enplanements"),
-  c("Confirmed", "avg_temp_y"),
-  c("Confirmed", "avg_precip_y"),
-  c("Confirmed", "avg_ws_y"),
-  c("Confirmed", "avg_dp_y"),
-  c("Confirmed", "avg_rh_y"),
-  c("Deaths", "avg_temp_y"),
-  c("Deaths", "avg_precip_y"),
-  c("Deaths", "avg_ws_y"),
-  c("Deaths", "avg_dp_y"),
-  c("Deaths", "avg_rh_y")
-)
-# Loop through each pair and plot CCF
-par(mfrow = c(2,2))  # Set up 2x2 plot layout
-
-for (pair in ccf_pairs) {
-  ccf(numeric_data[[pair[1]]], numeric_data[[pair[2]]], lag.max = 90, 
-      main = paste("CCF:", pair[1], "vs.", pair[2]), ylab = "Correlation")
-}
-par(mfrow = c(1,1))  # Reset plot layout
+```{r}
+#Data$log_Confirmed <- log1p(Data$Confirmed)
+#Data$log_Deaths <- log1p(Data$Deaths)
+#Data$log_pop_d <- log1p(Data$pop_d)
+#Data$log_avg_precip <- log1p(Data$avg_precip)
+#Data$log_enplanements <- log1p(Data$enplanements)
 ```
 
 
@@ -770,213 +832,217 @@ Data$log_enplanements <- log1p(Data$enplanements)
 
 
 
+```{r,warning=FALSE,message=FALSE}
+# Load required libraries
+library(dplyr)
+library(tseries)
 
-```{r, warning = FALSE, message = FALSE}
-# Fit a GAM model to see nonlinear relationships
-gam_model <- gam(Confirmed ~ s(avg_temp) + s(avg_rh), data = Data)
+# Convert the date column to Date class (change 'date' to your date column name)
+Data$date <- as.Date(Data$Date)
 
-# Check significance of nonlinear effects
-summary(gam_model)
+# 2. Compute monthly and yearly averages
+monthly <- Data %>%
+  group_by(month = format(date, "%Y-%m")) %>%
+  summarise(across(c(avg_temp, avg_dp, avg_rh, avg_ws, avg_precip, log_avg_precip), 
+                   ~ mean(.x, na.rm = TRUE)))
 
-# Visualize the smooth functions
-plot(gam_model, pages = 1)
+# 3. Convert to time series objects
+## For monthly data:
+start_year <- as.numeric(substr(monthly$month[1], 1, 4))
+start_month <- as.numeric(substr(monthly$month[1], 6, 7))
+monthly_ts <- ts(monthly[,-1], start = c(start_year, start_month), frequency = 12)
 
+# 5. Plot the time series
+# --- Group 1: Temperature and Dew Point Plots (2x2 grid) ---
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+plot(diff(monthly_ts[, "avg_temp"], lag = 12), 
+     main = "Temperature Time Series", xlab = "Time", ylab = "Temperature (°C)")
+plot(monthly_ts[, "avg_temp"], 
+     main = "Monthly avg_temp", ylab = "avg_temp")
+plot(diff(monthly_ts[, "avg_dp"], lag = 12), 
+     main = "Dew Point Time Series", xlab = "Time", ylab = "Dew Point (°C)")
+plot(monthly_ts[, "avg_dp"], 
+     main = "Monthly avg_dp", ylab = "avg_dp")
 
-```
+# --- Group 2: Relative Humidity and Wind Speed Plots (2x2 grid) ---
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+plot(diff(monthly_ts[, "avg_rh"], lag = 12), 
+     main = "Relative Humidity Time Series", xlab = "Time", ylab = "Relative Humidity (%)")
+plot(monthly_ts[, "avg_rh"], 
+     main = "Monthly avg_rh", ylab = "avg_rh")
+plot(diff(monthly_ts[, "avg_ws"], lag = 12), 
+     main = "Wind Speed Time Series", xlab = "Time", ylab = "Wind Speed (kts)")
+plot(monthly_ts[, "avg_ws"], 
+     main = "Monthly avg_ws", ylab = "avg_ws")
 
-```{r, warning = FALSE, message = FALSE}
-lm_model <- lm(Confirmed ~ avg_temp + avg_rh + enplanements, data = Data)
-summary(lm_model)
-```
-
-```{r, warning = FALSE, message = FALSE}
-# Convert Confirmed Cases into a time series object
-ts_confirmed <- ts(Data$Confirmed, start = c(2020, 1), frequency = 12)  # Monthly
-
-# Decompose time series
-decomposed <- decompose(ts_confirmed, type = "multiplicative")
-
-# Plot decomposition
-autoplot(decomposed)
-```
-
-```{r, warning = FALSE, message = FALSE}
-# Histogram for temperature
-ggplot(Data, aes(x = avg_temp)) +
-  geom_histogram(binwidth = 2, fill = "blue", color = "black", alpha = 0.7) +
-  theme_minimal() +
-  labs(title = "Distribution of Temperature", x = "Temperature (°C)", y = "Count")
-
-# Histogram for humidity
-ggplot(Data, aes(x = avg_rh)) +
-  geom_histogram(binwidth = 5, fill = "red", color = "black", alpha = 0.7) +
-  theme_minimal() +
-  labs(title = "Distribution of Relative Humidity", x = "Humidity (%)", y = "Count")
-```
-
-```{r, warning = FALSE, message = FALSE}
-# Fit a new GAM model with an interaction term
-gam_model_interaction <- gam(Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh), data = Data)
-
-# Print model summary
-summary(gam_model_interaction)
-
-# Plot smooth functions including interaction
-plot(gam_model_interaction, pages = 1, shade = TRUE)
-```
-
-```{r, warning = FALSE, message = FALSE}
-AIC(gam_model, gam_model_interaction)
-```
-
-```{r, warning = FALSE, message = FALSE}
-#suppressMessages(suppressWarnings(install.packages("visreg",type="binary")))
-
-# 3D Surface Plot for Interaction Effect
-visreg2d(gam_model_interaction, "avg_temp", "avg_rh", plot.type = "persp", cond = list())
-
-```
-
-```{r, warning = FALSE, message = FALSE}
-# Fit an enhanced GAM model with mobility and policy effects
-gam_model_mobility <- gam(
-  Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh) + 
-               s(enplanements) + s(Days_Until_Lockdown) + s(Poverty_Percent),
-  data = Data
-)
-
-# Print summary of new model
-summary(gam_model_mobility)
-```
-
-```{r, warning = FALSE, message = FALSE}
-AIC(gam_model_interaction, gam_model_mobility)
-```
-
-```{r, warning = FALSE, message = FALSE}
-par(mfrow = c(1,2))  # Arrange plots in 1 row, 2 columns
-
-plot(gam_model_mobility, select = 4, shade = TRUE, main = "Effect of Air Travel on COVID Cases")
-plot(gam_model_mobility, select = 5, shade = TRUE, main = "Effect of Lockdowns on COVID Cases")
-
-```
-
-```{r, warning = FALSE, message = FALSE}
-# Predict next 30 days of COVID cases
-forecast_cases <- predict(gam_model_mobility, newdata = Data, type = "response")
-
-# Compare actual vs. predicted cases
-Data$predicted_cases <- forecast_cases
-
-ggplot(Data, aes(x = Confirmed, y = predicted_cases)) +
-  geom_point(color = "blue", alpha = 0.5) +
-  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
-  theme_minimal() +
-  labs(title = "Actual vs. Predicted COVID Cases (with Mobility & Policy)", x = "Actual Cases", y = "Predicted Cases")
-
-```
-
-```{r, warning = FALSE, message = FALSE}
-Data$log_Confirmed <- log1p(Data$Confirmed)  # log(1 + x) prevents log(0) issues
-
-gam_model_log <- gam(
-  log_Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh) + 
-                  s(enplanements) + s(Days_Until_Lockdown) + s(Poverty_Percent),
-  data = Data
-)
-
-# Predict with log model and back-transform
-Data$predicted_log_cases <- exp(predict(gam_model_log, newdata = Data)) - 1
-
-# Plot again
-ggplot(Data, aes(x = Confirmed, y = predicted_log_cases)) +
-  geom_point(color = "blue", alpha = 0.5) +
-  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
-  theme_minimal() +
-  labs(title = "Log-Transformed Model: Actual vs. Predicted Cases", x = "Actual Cases", y = "Predicted Cases")
-
-```
-
-```{r, warning = FALSE, message = FALSE}
-gam_model_mobility2 <- gam(
-  Confirmed ~ s(avg_temp) + s(avg_rh) + ti(avg_temp, avg_rh) + 
-               s(enplanements) + s(Days_Until_Lockdown) + ti(enplanements, Days_Until_Lockdown),
-  data = Data
-)
-
-
-AIC(gam_model_mobility2, gam_model_mobility)
-```
-```{r}
-#install.packages("caret")
-
-varImp(gam_model_mobility2)
+# --- Group 3: Precipitation Plots (2x1 grid) ---
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+plot(diff(monthly_ts[, "avg_precip"], lag = 12), 
+     main = "Precipitation Time Series", xlab = "Time", ylab = "Precipitation (ins)")
+plot(monthly_ts[, "avg_precip"], 
+     main = "Monthly avg_precip", ylab = "avg_precip")
+plot(diff(monthly_ts[, "log_avg_precip"], lag = 12), 
+     main = "Log_Precipitation Time Series", xlab = "Time", ylab = "Precipitation (ins)")
+plot(monthly_ts[, "log_avg_precip"], 
+     main = "Monthly log_avg_precip", ylab = "log_avg_precip")
 ```
 
 
-```{r}
-library(MASS)
-glm_model <- glm.nb(Confirmed ~ avg_temp + avg_rh + enplanements + Days_Until_Lockdown, data = Data)
-summary(glm_model)
+```{r,warning=FALSE,message=FALSE}
+# Load required libraries
+library(dplyr)
+library(tseries)
+
+
+# Convert the date column to Date class 
+# (change 'date' to the actual name of your date column if needed)
+Data$date <- as.Date(Data$Date)
+
+# Compute monthly averages
+monthly <- Data %>%
+  group_by(month = format(date, "%Y-%m")) %>%
+  summarise(across(c(avg_temp, avg_dp, avg_rh, avg_ws, avg_precip), 
+                   ~ mean(.x, na.rm = TRUE)))
+
+# Convert month strings to Date objects (using first day of each month)
+monthly$month_date <- as.Date(paste0(monthly$month, "-01"))
+
+# Run ADF tests for monthly aggregated data
+adf_results_monthly <- lapply(monthly[, c("avg_temp", "avg_dp", "avg_rh", "avg_ws", "avg_precip")], function(x) {
+  adf.test(x)
+})
+
+
+# Print ADF test results
+cat("Monthly ADF Test Results:\n")
+print(adf_results_monthly)
 
 ```
 
-```{r}
-# Convert data for XGBoost
-X <- model.matrix(Confirmed ~ avg_temp + avg_rh + enplanements + Days_Until_Lockdown, data = Data)[, -1]
-y <- Data$Confirmed
 
-xgb_model <- xgboost(data = X, label = y, nrounds = 100, objective = "reg:squarederror")
-
-```
 
 
 ```{r}
 library(dplyr)
-Data_2 <- Data  %>%
-  rename("y1" = Confirmed, "y2" = Deaths, "y3" = log_Confirmed, "x1" = pop_d, "x2"= avg_precip, "x3" = avg_ws, "x4" = avg_rh, "x5" = avg_temp, "x6" = avg_dp, "x7" = pop_infant, "x8" = pop_elder, "x9" = enplanements, "x10" = Poverty_Percent, "x11" = Median_Household_Income, "x12" = Days_Until_Lockdown, "x13" = Distance_To_Nearest_Epicenter, "x14" = Airport_Presence, "x15" = Beach_Presence, "x16" = Number_Of_State_Parks, "x17" = avg_ws_y, "x18" = avg_rh_y, "x19" = avg_temp_y, "x20" = avg_dp_y, "x21" = avg_precip_y, "x22" = predicted_cases, "x23" = predicted_log_cases, "x24" = log_pop_d, "x25" = log_Deaths, "x26" = log_avg_precip, "x27" = log_enplanements)
+Data <- Data %>%
+  arrange(Month) %>%
+  mutate(diff_avg_ws = avg_ws - lag(avg_ws, 12), diff_avg_rh = avg_rh - lag(avg_rh, 12), diff_avg_temp = avg_temp - lag(avg_temp, 12), diff_avg_dp = avg_dp - lag(avg_dp, 12), diff_avg_precip = avg_precip - lag(avg_precip, 12))
 
-Data_3 <- Data_2 %>%
-  select(State, y1, y2, y3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25, x26, x27)
-```
+Data2 <- Data %>%
+  select(State, Date, "y1" = log_Confirmed,"x1" = log_pop_d, "x2"= log_avg_precip, "x3" = diff_avg_ws, "x4" = diff_avg_rh, "x5" = diff_avg_temp, "x6" = diff_avg_dp, "x7" = pop_infant, "x8" = pop_elder, "x9" = log_enplanements, "x10" = Poverty_Percent, "x11" = Median_Household_Income, "x12" = Days_Until_Lockdown, "x13" = Distance_To_Nearest_Epicenter, "x14" = Airport_Presence, "x15" = Beach_Presence, "x16" = Number_Of_State_Parks)
 
-
-
-```{r}
-summary(Data_3)
-
+summary(Data2)
 ```
 
 
 ```{r}
-model1 <- lm(y1~x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 + x11 + x12 + x13 + x14 + x15 + x16 + x17 + x18 + x19 + x20 + x21 + x22 + x23 + x24 + x25 + x26 + x27, Data_3)
+Data2 <- Data2 %>%
+  arrange(Date)  # sort by date if not already
 
+# Convert your data into a ts object. Suppose your earliest data is 2020-04, 
+# and your data is monthly (freq=12). Adjust the start date as appropriate:
+start_year <- 2020
+start_month <- 4
+monthly_frequency <- 12
+
+y_ts <- ts(Data2$y1,
+           start = c(start_year, start_month),
+           frequency = monthly_frequency)
+
+# For exogenous variables, we create a matrix (or data frame) of x's
+xreg_matrix <- cbind(
+  Data2$x1,  # log_pop_d
+  Data2$x2,  # log_avg_precip
+  Data2$x3,  # diff_avg_ws
+  Data2$x4,  # diff_avg_rh
+  Data2$x5,  # temperature data
+  Data2$x6,  # diff_avg_dp
+  Data2$x7,  # pop_infant
+  Data2$x8,  # pop_elder
+  Data2$x9,  # log_enplanements
+  Data2$x10, # Poverty_Percent
+  Data2$x11, # Median_Household_Income
+  Data2$x12, # Days_Until_Lockdown
+  Data2$x13, # Distance_To_Nearest_Epicenter
+  Data2$x14, # Airport_Presence
+  Data2$x15, # Beach_Presence
+  Data2$x16  # Number_Of_State_Parks
+)
+
+library(forecast)
+
+# Fit SARIMA with exogenous regressors
+fit_sarima <- auto.arima(y_ts,
+                         xreg = xreg_matrix,
+                         seasonal = TRUE,  # let it detect seasonal terms
+                         stepwise = FALSE, # optional, can improve search
+                         approximation = FALSE) # optional
+
+summary(fit_sarima)
+coef(fit_sarima) 
 ```
 
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
-vif(model1)
+coef(fit_sarima)             # to list all estimated coefficients
+#vif(model1)
 ```
 
-```{r}
+```{r, messages = FALSE, warning = FALSE}
+D_1 <- Data_2 %>%
+  select(y1, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x24, x26, x27)
+
+# Create the predictor matrix and response vector
+X <- as.matrix(D_1 %>% select(-y1))
+y <- D_1$y1
+
+# Optionally, scale your predictors:
+X_scaled <- scale(X)
+
+# Fit a Lasso regression using glmnet (alpha = 1 indicates Lasso)
+#install.packages("glmnet")
+library(glmnet)
+cv_lasso <- cv.glmnet(X_scaled, y, alpha = 1)
+optimal_lambda <- cv_lasso$lambda.min
+
+# Fit the final Lasso model
+final_model <- glmnet(X_scaled, y, alpha = 1, lambda = optimal_lambda)
+print(coef(final_model))
 
 
 ```
 
+
+# Configuring all possible regression combinations
+
+In order to efficiently test each model based on our variables, that will be 2^27-1 models. Computing in R is not feasible, so we will partition our data to load into Apache Spark in order to take advantage of parallel processing power of Apache cutting out computing time considerably.
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
-k <- ols_step_all_possible(model_1)
-bestmodel <- k%>%
-  filter(rsquare >= 0.5) %>%
-  filter(cp <= 5) %>%
-  arrange(cp) %>%
-  head(1)
+#k <- ols_step_all_possible(model_1)
+#bestmodel <- k%>%
+#  filter(rsquare >= 0.5) %>%
+#  filter(cp <= 5) %>%
+#  arrange(cp) %>%
+#  head(1)
 
-bestmodel
+#bestmodel
 ```
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
+# Load the plm package for panel data analysis
+install.packages("plm")
+library(plm)
 
+# Assume your data frame 'my_data' has a cross-sectional ID (e.g., "id") 
+# and a time variable (e.g., "time")
+Data$Date <- as.Date(Data$Date)
+Data$State <- as.factor(Data$State)
 
+panel_data <- pdata.frame(Data, index = c("State", "Date"))
+
+# Pooled OLS model
+pooled_model <- plm(y ~ x1 + x2, data = panel_data, model = "pooling")
+summary(pooled_model)
+y1, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x24, x26, x27
 ```
 
 ```{r}
