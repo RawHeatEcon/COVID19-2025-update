@@ -963,6 +963,17 @@ vif(model1)
 
 ```
 
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+k <- ols_step_all_possible(model_1)
+bestmodel <- k%>%
+  filter(rsquare >= 0.5) %>%
+  filter(cp <= 5) %>%
+  arrange(cp) %>%
+  head(1)
+
+bestmodel
+```
+
 ```{r}
 
 
