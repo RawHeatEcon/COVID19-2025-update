@@ -262,7 +262,7 @@ if (all_have_50_rows) {
 
 #Combining Data
 
-We combine all daily Covid data recods into a single data set ordered by State and Date.
+We combine all daily Covid data records into a single data set ordered by State and Date.
 ```{r,echo= TRUE, eval=FALSE}
 # Binding all rows of clean covid data set list
 covid_df <- bind_rows(covid_data_list_clean)
@@ -495,9 +495,8 @@ Average state precipitation data and temperature data are already separated by `
 # Supplemental Data Import
 
 Importing a few more relative data sets that may help support our hypothesis/analysis.
-```{r, echo = TRUE, eval = TRUE}
+```{r, echo = FALSE, eval = TRUE}
 # Reading the data
-main_dir <- "C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data"
 income_df <- read.csv("./Data/poverty_income/Income.csv", check.names = FALSE)
 regressors_df <- read.csv("./Data/Regressors.csv", check.names = FALSE)
 weather_df <- read.csv("./Data/Weather Data/combined_weather_data.csv", check.names = FALSE)
@@ -511,11 +510,11 @@ covid_df <- read.csv("./Data/covid_df.csv", check.names = FALSE)
 
 Income Dataset:
 ```{r, echo=FALSE}
-example_6 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Income.csv", check.names = FALSE)
+example_6 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/poverty_income/Income.csv", check.names = FALSE)
 head(example_6,5)
 ```
 
-Additional egressors Dataset:
+Additional Regressors Dataset:
 ```{r, echo=FALSE}
 example_6_5 <- read.csv("C:/Users/William Roche/Downloads/School/Portfolio/Covid Project/Data/Regressors.csv", check.names = FALSE)
 head(example_6_5,5)
@@ -534,7 +533,6 @@ traffic_df <- as.data.frame(traffic_df)
 # Making sure all data are in data.frame format
 objects <- list(covid_df = covid_df, population_df = population_df, population2_df = population2_df, traffic_df = traffic_df, weather_df = weather_df, income_df = income_df, regressors_df = regressors_df)
 sapply(objects, is.data.frame)
-#getAnywhere(select)
 ```
 
 <br>
@@ -543,7 +541,7 @@ sapply(objects, is.data.frame)
 
 Verifying that columns align properly, and remove any extraneous data to prepare them for consolidation. When necessary, we also address any inconsistencies to streamline the process.
 ```{r, echo = TRUE, eval = TRUE}
-detach("package:MASS", unload = TRUE)
+#detach("package:MASS", unload = TRUE)
 library(dplyr)
 # Renaming and making sure case is constant throughout all data sets for join keys
 # Decomposing Date into Year and Month
@@ -631,7 +629,7 @@ ggplot(df_classes, aes(x = DataFrame, y = Variable, fill = Class)) +
 
 # Left Join
 
-First use **left_join** by `State`,`Year`, and `Month`, then we join the rest of the data together before joining to original set by `State` and `Year`.
+First use **left_join** by `State` and `Year`, then we join the rest of the data together before joining to original set by `State`,`Year`, and `Month` .
 ```{r, echo = TRUE, eval = TRUE}
 # Left join using composite key (State + Year)
 Data_df1 <- population_df %>%
@@ -663,8 +661,8 @@ Data <- Data %>%
 #write_csv(Data, file.path(main, "Data.csv"))
 ```
 
-# Checking for `NULL` values.
-```{r, echo = TRUE, eval = FALSE}
+# Checking final for `NULL` values.
+```{r, echo = TRUE, eval = TRUE}
 sum(is.na(Data))
 ```
 <br>
@@ -694,13 +692,12 @@ plot(Data$Date, Data$Deaths, type = "l", col = "blue",
 
 plot(Data$Date, Data$Recovered, type = "l", col = "blue",
      xlab = "Date", ylab = "Recovered", main = "Recovered")
-
 ```
 
 
+# Correlation Plot
 
-
-
+Checking if any variables are correlated with each other, so that we can take out unnecessary variables.
 ```{r warning = FALSE, message = FALSE, fig.cap="Fig. 4",echo=FALSE}
 Data_num <- Data[, sapply(Data, is.numeric)]
 data_cor <- cor(Data_num)
@@ -708,6 +705,8 @@ data_cor <- cor(Data_num)
 corrplot(data_cor, method = "circle", tl.cex = 0.6, 
          order = "hclust", number.cex = 0.7, diag = FALSE)
 ```
+
+
 ```{r}
 str(Data)
 ```
@@ -802,14 +801,6 @@ corrplot(spearman_cor, method = "color", tl.cex = 0.7, title = "Spearman Correla
 par(mfrow = c(1,1))  # Reset plotting layout
 ```
 
-
-```{r}
-#Data$log_Confirmed <- log1p(Data$Confirmed)
-#Data$log_Deaths <- log1p(Data$Deaths)
-#Data$log_pop_d <- log1p(Data$pop_d)
-#Data$log_avg_precip <- log1p(Data$avg_precip)
-#Data$log_enplanements <- log1p(Data$enplanements)
-```
 
 
 ```{r}
@@ -933,6 +924,114 @@ Data2 <- Data %>%
 
 summary(Data2)
 ```
+
+```{r, warning=FALSE,message=FALSE}
+#install.packages("doParallel")
+library(doParallel)
+
+
+num_cores <- detectCores() - 2  # Use all but 2 cores (for system stability)
+cl <- makeCluster(num_cores)  
+registerDoParallel(cl)
+```
+
+
+```{r}
+library(forecast)
+library(dplyr)
+
+Data2 <- Data2 %>% arrange(Date)  # Sort by date
+
+start_year <- 2020
+start_month <- 4
+monthly_frequency <- 12
+
+y_ts <- ts(Data2$y1, start = c(start_year, start_month), frequency = monthly_frequency)
+
+xreg_matrix <- cbind(
+  Data2$x1, Data2$x2, Data2$x3, Data2$x4, Data2$x5, Data2$x6, 
+  Data2$x7, Data2$x8, Data2$x9, Data2$x10, Data2$x11, Data2$x12, 
+  Data2$x13, Data2$x14, Data2$x15, Data2$x16
+)
+
+# Run SARIMA model with parallel processing
+fit_sarima <- auto.arima(
+  y_ts,
+  xreg = xreg_matrix,
+  seasonal = TRUE,
+  stepwise = FALSE,
+  approximation = FALSE
+)
+
+summary(fit_sarima)
+coef(fit_sarima)
+
+```
+
+
+```{r}
+stopCluster(cl)
+
+```
+
+
+```{r}
+library(forecast)
+
+# Plot residuals to visually inspect patterns
+checkresiduals(fit_sarima)
+
+# Perform the Ljung-Box test for autocorrelation
+Box.test(residuals(fit_sarima), lag = 20, type = "Ljung-Box")
+
+```
+
+
+```{r}
+# Alternative SARIMA model (changing seasonal MA to 1 and adding non-seasonal MA)
+alt_sarima <- auto.arima(y_ts, xreg = xreg_matrix, seasonal = TRUE, 
+                         stepwise = FALSE, approximation = FALSE, 
+                         d = 1, D = 0, max.p = 3, max.q = 3, 
+                         max.P = 1, max.Q = 2)
+
+# Compare AIC/BIC
+cat("Original Model AIC:", AIC(fit_sarima), "BIC:", BIC(fit_sarima), "\n")
+cat("Alternative Model AIC:", AIC(alt_sarima), "BIC:", BIC(alt_sarima), "\n")
+
+dim(xreg_matrix)  # Find number of regressors used
+
+future_xreg_matrix <- matrix(0, nrow=16, ncol=ncol(xreg_matrix))  # Adjust based on known values
+colnames(future_xreg_matrix) <- colnames(xreg_matrix)  # Ensure column names match
+
+
+# Generate forecasts for next 12 periods
+future_forecast <- forecast(fit_sarima, xreg = future_xreg_matrix, h = 12)
+
+# Plot the forecast
+autoplot(future_forecast)
+
+# Calculate accuracy of predictions
+accuracy(future_forecast, actual_values)  # Replace actual_values with real future data if available
+
+
+# Histogram of residuals
+hist(residuals(fit_sarima), main = "Residual Distribution", xlab = "Residuals")
+
+# ACF and PACF plots of residuals
+acf(residuals(fit_sarima), main = "Residual ACF")
+pacf(residuals(fit_sarima), main = "Residual PACF")
+
+
+# Normality test (should be p > 0.05 for normal residuals)
+shapiro.test(residuals(fit_sarima))
+
+# Augmented Dickey-Fuller test (should be p < 0.05 for stationarity)
+adf.test(y_ts, alternative = "stationary")
+
+```
+
+
+
 
 
 ```{r}
@@ -1156,4 +1255,4 @@ Unemployment Rates Data
 11. https://www.bls.gov/lau/tables.htm#stateaa
 
 
-
+#getAnywhere(select)
